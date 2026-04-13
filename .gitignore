@@ -1,0 +1,20 @@
+build/
+build-*/
+cmake-build-*/
+.cache/
+compile_commands.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+*.pem
