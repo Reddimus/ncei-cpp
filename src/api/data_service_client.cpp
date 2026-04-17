@@ -2,8 +2,9 @@
 
 #include "ncei/models/common.hpp"
 
+#include <format>
+#include <iterator>
 #include <nlohmann/json.hpp>
-#include <sstream>
 #include <utility>
 
 namespace ncei {
@@ -60,59 +61,47 @@ Result<HttpResponse> DataServiceClient::do_get(std::string_view path) {
 }
 
 std::string DataServiceClient::build_data_query(const DataRequestParams& params) {
-	std::ostringstream oss;
-	oss << "/data/v1?dataset=" << params.dataset;
+	std::string url = std::format("/data/v1?dataset={}", params.dataset);
+	url.reserve(url.size() + 256);
+	std::back_insert_iterator<std::string> out(url);
 
 	if (params.start_date) {
-		oss << "&startDate=" << url_encode_date(*params.start_date);
+		std::format_to(out, "&startDate={}", url_encode_date(*params.start_date));
 	}
 	if (params.end_date) {
-		oss << "&endDate=" << url_encode_date(*params.end_date);
+		std::format_to(out, "&endDate={}", url_encode_date(*params.end_date));
 	}
 	if (params.stations) {
 		bool first = true;
 		for (const std::string& station : *params.stations) {
-			if (first) {
-				oss << "&stations=";
-				first = false;
-			} else {
-				oss << ",";
-			}
-			oss << station;
+			std::format_to(out, "{}{}", first ? "&stations=" : ",", station);
+			first = false;
 		}
 	}
 	if (params.data_types) {
 		bool first = true;
 		for (const std::string& dt : *params.data_types) {
-			if (first) {
-				oss << "&dataTypes=";
-				first = false;
-			} else {
-				oss << ",";
-			}
-			oss << dt;
+			std::format_to(out, "{}{}", first ? "&dataTypes=" : ",", dt);
+			first = false;
 		}
 	}
-	if (params.format) {
-		oss << "&format=" << to_string(*params.format);
-	}
-	if (params.units) {
-		oss << "&units=" << *params.units;
-	}
-	if (params.bbox) {
-		oss << "&boundingBox=" << *params.bbox;
-	}
+	if (params.format) std::format_to(out, "&format={}", to_string(*params.format));
+	if (params.units) std::format_to(out, "&units={}", *params.units);
+	if (params.bbox) std::format_to(out, "&boundingBox={}", *params.bbox);
 	if (params.include_attributes) {
-		oss << "&includeAttributes=" << (*params.include_attributes ? "true" : "false");
+		std::format_to(out, "&includeAttributes={}",
+					   *params.include_attributes ? "true" : "false");
 	}
 	if (params.include_station_name) {
-		oss << "&includeStationName=" << (*params.include_station_name ? "true" : "false");
+		std::format_to(out, "&includeStationName={}",
+					   *params.include_station_name ? "true" : "false");
 	}
 	if (params.include_station_location) {
-		oss << "&includeStationLocation=" << (*params.include_station_location ? "true" : "false");
+		std::format_to(out, "&includeStationLocation={}",
+					   *params.include_station_location ? "true" : "false");
 	}
 
-	return oss.str();
+	return url;
 }
 
 Result<DataPointCollection> DataServiceClient::get_data(const DataRequestParams& params) {
