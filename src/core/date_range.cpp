@@ -1,8 +1,7 @@
 #include "ncei/date_range.hpp"
 
 #include <chrono>
-#include <iomanip>
-#include <sstream>
+#include <format>
 #include <stdexcept>
 
 namespace ncei {
@@ -36,10 +35,7 @@ DateParts parse_date(const std::string& iso_date) {
 }
 
 std::string format_date(const DateParts& parts) {
-	std::ostringstream oss;
-	oss << std::setfill('0') << std::setw(4) << parts.year << '-' << std::setw(2) << parts.month
-		<< '-' << std::setw(2) << parts.day;
-	return oss.str();
+	return std::format("{:04d}-{:02d}-{:02d}", parts.year, parts.month, parts.day);
 }
 
 std::int32_t days_between(const std::string& start, const std::string& end) {

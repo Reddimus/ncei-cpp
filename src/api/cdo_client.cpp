@@ -2,8 +2,9 @@
 
 #include "ncei/models/common.hpp"
 
+#include <format>
+#include <iterator>
 #include <nlohmann/json.hpp>
-#include <sstream>
 #include <utility>
 
 namespace ncei {
@@ -56,98 +57,55 @@ Result<HttpResponse> CDOClient::do_get(std::string_view path) {
 }
 
 std::string CDOClient::build_list_query(std::string_view base, const CDOListParams& params) {
-	std::ostringstream oss;
-	oss << base;
+	std::string url(base);
+	url.reserve(url.size() + 256);
+	std::back_insert_iterator<std::string> out(url);
 	char sep = '?';
 
-	if (params.dataset_id) {
-		oss << sep << "datasetid=" << *params.dataset_id;
+	auto append = [&](std::string_view key, const auto& value) {
+		std::format_to(out, "{}{}={}", sep, key, value);
 		sep = '&';
-	}
-	if (params.location_id) {
-		oss << sep << "locationid=" << *params.location_id;
-		sep = '&';
-	}
-	if (params.station_id) {
-		oss << sep << "stationid=" << *params.station_id;
-		sep = '&';
-	}
-	if (params.data_type_id) {
-		oss << sep << "datatypeid=" << *params.data_type_id;
-		sep = '&';
-	}
-	if (params.data_category_id) {
-		oss << sep << "datacategoryid=" << *params.data_category_id;
-		sep = '&';
-	}
-	if (params.location_category_id) {
-		oss << sep << "locationcategoryid=" << *params.location_category_id;
-		sep = '&';
-	}
-	if (params.start_date) {
-		oss << sep << "startdate=" << *params.start_date;
-		sep = '&';
-	}
-	if (params.end_date) {
-		oss << sep << "enddate=" << *params.end_date;
-		sep = '&';
-	}
-	if (params.sort_field) {
-		oss << sep << "sortfield=" << *params.sort_field;
-		sep = '&';
-	}
-	if (params.sort_order) {
-		oss << sep << "sortorder=" << *params.sort_order;
-		sep = '&';
-	}
-	if (params.limit) {
-		oss << sep << "limit=" << *params.limit;
-		sep = '&';
-	}
-	if (params.offset) {
-		oss << sep << "offset=" << *params.offset;
-		sep = '&';
-	}
+	};
 
-	return oss.str();
+	if (params.dataset_id) append("datasetid", *params.dataset_id);
+	if (params.location_id) append("locationid", *params.location_id);
+	if (params.station_id) append("stationid", *params.station_id);
+	if (params.data_type_id) append("datatypeid", *params.data_type_id);
+	if (params.data_category_id) append("datacategoryid", *params.data_category_id);
+	if (params.location_category_id) append("locationcategoryid", *params.location_category_id);
+	if (params.start_date) append("startdate", *params.start_date);
+	if (params.end_date) append("enddate", *params.end_date);
+	if (params.sort_field) append("sortfield", *params.sort_field);
+	if (params.sort_order) append("sortorder", *params.sort_order);
+	if (params.limit) append("limit", *params.limit);
+	if (params.offset) append("offset", *params.offset);
+
+	return url;
 }
 
 std::string CDOClient::build_data_query(const GetDataParams& params) {
-	std::ostringstream oss;
-	oss << "/data?datasetid=" << params.dataset_id << "&startdate=" << params.start_date
-		<< "&enddate=" << params.end_date;
+	std::string url = std::format("/data?datasetid={}&startdate={}&enddate={}",
+								  params.dataset_id, params.start_date, params.end_date);
+	std::back_insert_iterator<std::string> out(url);
 
 	if (params.data_type_ids) {
 		for (const std::string& dt : *params.data_type_ids) {
-			oss << "&datatypeid=" << dt;
+			std::format_to(out, "&datatypeid={}", dt);
 		}
 	}
-	if (params.location_id) {
-		oss << "&locationid=" << *params.location_id;
-	}
-	if (params.station_id) {
-		oss << "&stationid=" << *params.station_id;
-	}
-	if (params.sort_field) {
-		oss << "&sortfield=" << *params.sort_field;
-	}
-	if (params.sort_order) {
-		oss << "&sortorder=" << *params.sort_order;
-	}
-	if (params.limit) {
-		oss << "&limit=" << *params.limit;
-	}
-	if (params.offset) {
-		oss << "&offset=" << *params.offset;
-	}
-	if (params.units) {
-		oss << "&units=" << *params.units;
-	}
+	if (params.location_id) std::format_to(out, "&locationid={}", *params.location_id);
+	if (params.station_id) std::format_to(out, "&stationid={}", *params.station_id);
+	if (params.sort_field) std::format_to(out, "&sortfield={}", *params.sort_field);
+	if (params.sort_order) std::format_to(out, "&sortorder={}", *params.sort_order);
+	if (params.limit) std::format_to(out, "&limit={}", *params.limit);
+	if (params.offset) std::format_to(out, "&offset={}", *params.offset);
+	if (params.units) std::format_to(out, "&units={}", *params.units);
 	if (params.include_metadata) {
-		oss << "&includemetadata=" << (*params.include_metadata ? "true" : "false");
+		std::format_to(out, "&includemetadata={}",
+					   *params.include_metadata ? "true" : "false");
 	}
 
-	return oss.str();
+	return url;
 }
 
 namespace {
