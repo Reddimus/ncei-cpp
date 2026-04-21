@@ -1,0 +1,2 @@
+# Repo-owned exceptions for the explicit local-type policy.
+# Format: relative/path.cpp|line snippet
