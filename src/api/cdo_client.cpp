@@ -67,25 +67,37 @@ std::string CDOClient::build_list_query(std::string_view base, const CDOListPara
 		sep = '&';
 	};
 
-	if (params.dataset_id) append("datasetid", *params.dataset_id);
-	if (params.location_id) append("locationid", *params.location_id);
-	if (params.station_id) append("stationid", *params.station_id);
-	if (params.data_type_id) append("datatypeid", *params.data_type_id);
-	if (params.data_category_id) append("datacategoryid", *params.data_category_id);
-	if (params.location_category_id) append("locationcategoryid", *params.location_category_id);
-	if (params.start_date) append("startdate", *params.start_date);
-	if (params.end_date) append("enddate", *params.end_date);
-	if (params.sort_field) append("sortfield", *params.sort_field);
-	if (params.sort_order) append("sortorder", *params.sort_order);
-	if (params.limit) append("limit", *params.limit);
-	if (params.offset) append("offset", *params.offset);
+	if (params.dataset_id)
+		append("datasetid", *params.dataset_id);
+	if (params.location_id)
+		append("locationid", *params.location_id);
+	if (params.station_id)
+		append("stationid", *params.station_id);
+	if (params.data_type_id)
+		append("datatypeid", *params.data_type_id);
+	if (params.data_category_id)
+		append("datacategoryid", *params.data_category_id);
+	if (params.location_category_id)
+		append("locationcategoryid", *params.location_category_id);
+	if (params.start_date)
+		append("startdate", *params.start_date);
+	if (params.end_date)
+		append("enddate", *params.end_date);
+	if (params.sort_field)
+		append("sortfield", *params.sort_field);
+	if (params.sort_order)
+		append("sortorder", *params.sort_order);
+	if (params.limit)
+		append("limit", *params.limit);
+	if (params.offset)
+		append("offset", *params.offset);
 
 	return url;
 }
 
 std::string CDOClient::build_data_query(const GetDataParams& params) {
-	std::string url = std::format("/data?datasetid={}&startdate={}&enddate={}",
-								  params.dataset_id, params.start_date, params.end_date);
+	std::string url = std::format("/data?datasetid={}&startdate={}&enddate={}", params.dataset_id,
+								  params.start_date, params.end_date);
 	std::back_insert_iterator<std::string> out(url);
 
 	if (params.data_type_ids) {
@@ -93,16 +105,22 @@ std::string CDOClient::build_data_query(const GetDataParams& params) {
 			std::format_to(out, "&datatypeid={}", dt);
 		}
 	}
-	if (params.location_id) std::format_to(out, "&locationid={}", *params.location_id);
-	if (params.station_id) std::format_to(out, "&stationid={}", *params.station_id);
-	if (params.sort_field) std::format_to(out, "&sortfield={}", *params.sort_field);
-	if (params.sort_order) std::format_to(out, "&sortorder={}", *params.sort_order);
-	if (params.limit) std::format_to(out, "&limit={}", *params.limit);
-	if (params.offset) std::format_to(out, "&offset={}", *params.offset);
-	if (params.units) std::format_to(out, "&units={}", *params.units);
+	if (params.location_id)
+		std::format_to(out, "&locationid={}", *params.location_id);
+	if (params.station_id)
+		std::format_to(out, "&stationid={}", *params.station_id);
+	if (params.sort_field)
+		std::format_to(out, "&sortfield={}", *params.sort_field);
+	if (params.sort_order)
+		std::format_to(out, "&sortorder={}", *params.sort_order);
+	if (params.limit)
+		std::format_to(out, "&limit={}", *params.limit);
+	if (params.offset)
+		std::format_to(out, "&offset={}", *params.offset);
+	if (params.units)
+		std::format_to(out, "&units={}", *params.units);
 	if (params.include_metadata) {
-		std::format_to(out, "&includemetadata={}",
-					   *params.include_metadata ? "true" : "false");
+		std::format_to(out, "&includemetadata={}", *params.include_metadata ? "true" : "false");
 	}
 
 	return url;
