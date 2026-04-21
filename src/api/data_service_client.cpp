@@ -85,12 +85,14 @@ std::string DataServiceClient::build_data_query(const DataRequestParams& params)
 			first = false;
 		}
 	}
-	if (params.format) std::format_to(out, "&format={}", to_string(*params.format));
-	if (params.units) std::format_to(out, "&units={}", *params.units);
-	if (params.bbox) std::format_to(out, "&boundingBox={}", *params.bbox);
+	if (params.format)
+		std::format_to(out, "&format={}", to_string(*params.format));
+	if (params.units)
+		std::format_to(out, "&units={}", *params.units);
+	if (params.bbox)
+		std::format_to(out, "&boundingBox={}", *params.bbox);
 	if (params.include_attributes) {
-		std::format_to(out, "&includeAttributes={}",
-					   *params.include_attributes ? "true" : "false");
+		std::format_to(out, "&includeAttributes={}", *params.include_attributes ? "true" : "false");
 	}
 	if (params.include_station_name) {
 		std::format_to(out, "&includeStationName={}",
