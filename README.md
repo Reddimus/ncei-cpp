@@ -1,5 +1,10 @@
 # ncei-cpp
 
+[![CI](https://github.com/Reddimus/ncei-cpp/actions/workflows/ci.yml/badge.svg)](https://github.com/Reddimus/ncei-cpp/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Reddimus/ncei-cpp)](https://github.com/Reddimus/ncei-cpp/releases)
+[![C++23](https://img.shields.io/badge/C%2B%2B-23-blue.svg)](https://en.cppreference.com/w/cpp/23)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 C++23 SDK for the [NCEI](https://www.ncei.noaa.gov/) (National Centers for Environmental Information) climate data APIs.
 
 Access decades of historical weather data — temperature, precipitation, wind, pressure, and more — from 100+ global datasets. Supports both the CDO Web Services v2 API and the newer Access Data Service API.
