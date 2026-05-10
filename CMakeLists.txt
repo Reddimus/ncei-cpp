@@ -17,7 +17,9 @@ option(NCEI_NATIVE_ARCH "Use -march=native for CPU-specific tuning" OFF)
 option(NCEI_ENABLE_NETCDF "Enable NetCDF format support" OFF)
 
 # Aggressive optimization flags for Release builds
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+if(NOT MSVC)
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+endif()
 
 # Enable LTO if requested and supported
 if(NCEI_ENABLE_LTO)
@@ -31,20 +33,20 @@ if(NCEI_ENABLE_LTO)
     endif()
 endif()
 
-# CPU-specific tuning.
-# NCEI_NATIVE_ARCH=ON → -march=native (only when you know the deploy CPU).
-# Default: -march=x86-64-v3 (2017+ x86 baseline — AVX2, BMI2, FMA). Matches the
-# service Dockerfiles so FetchContent-consumed builds produce identical codegen.
-if(NCEI_NATIVE_ARCH)
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
-    message(STATUS "Using -march=native for CPU-specific optimizations")
-else()
-    include(CheckCXXCompilerFlag)
-    check_cxx_compiler_flag("-march=x86-64-v3" COMPILER_SUPPORTS_X86_64_V3)
-    if(COMPILER_SUPPORTS_X86_64_V3)
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=x86-64-v3")
+# CPU-specific tuning. GCC/Clang only — MSVC has different /arch
+# semantics so we leave its defaults untouched.
+if(NOT MSVC)
+    if(NCEI_NATIVE_ARCH)
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
+        message(STATUS "Using -march=native for CPU-specific optimizations")
     else()
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -mtune=generic")
+        include(CheckCXXCompilerFlag)
+        check_cxx_compiler_flag("-march=x86-64-v3" COMPILER_SUPPORTS_X86_64_V3)
+        if(COMPILER_SUPPORTS_X86_64_V3)
+            set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=x86-64-v3")
+        else()
+            set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -mtune=generic")
+        endif()
     endif()
 endif()
 
