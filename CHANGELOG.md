@@ -6,6 +6,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-10
+
 ### CI
 
 - First-ever GitHub Actions workflow coverage — build + test + lint on
