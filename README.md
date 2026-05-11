@@ -121,7 +121,7 @@ make coverage     # Code coverage report (requires lcov)
 include(FetchContent)
 FetchContent_Declare(ncei-cpp
     GIT_REPOSITORY https://github.com/Reddimus/ncei-cpp.git
-    GIT_TAG v0.1.0
+    GIT_TAG v0.1.1
 )
 FetchContent_MakeAvailable(ncei-cpp)
 target_link_libraries(myapp PRIVATE ncei)
