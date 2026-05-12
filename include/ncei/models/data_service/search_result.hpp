@@ -1,7 +1,5 @@
 #pragma once
-#include <nlohmann/json_fwd.hpp>
 #include <string>
-#include <utility>
 #include <vector>
 
 namespace ncei {
@@ -25,8 +23,5 @@ struct DatasetSearchResult {
 	std::string end_date;
 	std::vector<std::string> data_types;
 };
-
-void from_json(const nlohmann::json& j, DataSearchResult& r);
-void from_json(const nlohmann::json& j, DatasetSearchResult& r);
 
 } // namespace ncei

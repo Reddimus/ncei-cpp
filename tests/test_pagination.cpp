@@ -1,7 +1,6 @@
 #include "ncei/pagination.hpp"
 
 #include <gtest/gtest.h>
-#include <nlohmann/json.hpp>
 
 namespace ncei {
 namespace {
@@ -10,40 +9,6 @@ TEST(ResultSetMetadataTest, DefaultConstruction) {
 	ResultSetMetadata m;
 	EXPECT_EQ(m.offset, 0);
 	EXPECT_EQ(m.count, 0);
-	EXPECT_EQ(m.limit, 25);
-}
-
-TEST(ResultSetMetadataTest, FromJson) {
-	nlohmann::json j = nlohmann::json::parse(R"({
-		"metadata": {
-			"resultset": {
-				"offset": 50,
-				"count": 200,
-				"limit": 25
-			}
-		}
-	})");
-	ResultSetMetadata m;
-	from_json(j, m);
-	EXPECT_EQ(m.offset, 50);
-	EXPECT_EQ(m.count, 200);
-	EXPECT_EQ(m.limit, 25);
-}
-
-TEST(ResultSetMetadataTest, FromJsonNestedStructure) {
-	nlohmann::json j = nlohmann::json::parse(R"({
-		"metadata": {
-			"resultset": {
-				"offset": 0,
-				"count": 100,
-				"limit": 25
-			}
-		}
-	})");
-	ResultSetMetadata m;
-	from_json(j, m);
-	EXPECT_EQ(m.offset, 0);
-	EXPECT_EQ(m.count, 100);
 	EXPECT_EQ(m.limit, 25);
 }
 

@@ -1,17 +1,40 @@
+// Copyright (c) 2026 PredictionMarketsAI
+// SPDX-License-Identifier: MIT
+
 #include "ncei/models/cdo/location.hpp"
 
+#include "ncei/error.hpp"
 #include "ncei/models/common.hpp"
+#include "ncei/pagination.hpp"
 
-#include <nlohmann/json.hpp>
+#include <glaze/glaze.hpp>
+#include <string_view>
+
+#include "../pagination_detail.hpp"
+
+namespace ncei {} // namespace ncei
+
+template <>
+struct glz::meta<ncei::Location> {
+	using T = ncei::Location;
+	static constexpr auto value = // auto-ok: glz::object returns unspellable tuple
+		object("id", &T::id, "name", &T::name, "datacoverage", &T::data_coverage, "mindate",
+			   &T::min_date, "maxdate", &T::max_date);
+};
 
 namespace ncei {
 
-void from_json(const nlohmann::json& j, Location& l) {
-	l.id = json_string(j, "id");
-	l.name = json_string(j, "name");
-	l.data_coverage = json_double(j, "datacoverage");
-	l.min_date = json_string(j, "mindate");
-	l.max_date = json_string(j, "maxdate");
+Result<void> deserialize_location(std::string_view body, Location& out) {
+	glz::error_ctx ec = glz::read<detail::kReadOpts>(out, body);
+	if (ec) {
+		return std::unexpected(Error::parse(glz::format_error(ec, body)));
+	}
+	return {};
+}
+
+template <>
+Result<void> deserialize_cdo_list(std::string_view body, CDOResponse<Location>& out) {
+	return detail::deserialize_cdo_list_impl(body, out);
 }
 
 } // namespace ncei

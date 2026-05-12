@@ -1,16 +1,20 @@
 # Core library (error, rate limiting, retry, date_range, csv_parser)
+#
+# Glaze is header-only and pulled in via include-path only (matching how
+# nlohmann was integrated pre-migration). This sidesteps CMake's "INTERFACE
+# target not in export set" error that fires if we link glaze::glaze
+# directly onto these installable static libs.
 add_library(ncei_core STATIC
     core/error.cpp
     core/rate_limit.cpp
     core/retry.cpp
     core/date_range.cpp
     core/csv_parser.cpp
-    core/pagination.cpp
 )
 target_compile_features(ncei_core PUBLIC cxx_std_23)
 target_include_directories(ncei_core PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<BUILD_INTERFACE:${json_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${glaze_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
@@ -41,6 +45,7 @@ add_library(ncei_models STATIC
 target_link_libraries(ncei_models PUBLIC ncei_core)
 target_include_directories(ncei_models PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${glaze_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 

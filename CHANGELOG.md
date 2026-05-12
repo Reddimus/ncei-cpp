@@ -6,6 +6,42 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING**: JSON parsing migrated from `nlohmann/json` v3.11.3 to
+  [`Glaze`](https://github.com/stephenberry/glaze) v7.6.0. The public
+  client API (`CDOClient::get_*`, `DataServiceClient::get_*`,
+  `parse_csv_data` / `parse_ssv_data`) is unchanged. Internal
+  `from_json(const nlohmann::json&, T&)` overloads have been replaced
+  with `deserialize_<T>(std::string_view, T&) -> Result<void>` in the
+  `ncei::` namespace. The transitional `json_string` / `json_int` /
+  `json_double` / `json_bool` helpers in `models/common.hpp` are gone
+  (no external consumers). Benchmark: ~9-15x parse speedup on a
+  representative 21 KB CDO `/stations` list-response payload
+  (nlohmann ~360-590 us/op → Glaze ~32-40 us/op on x86_64-v3,
+  GCC 13.3, -O3 -DNDEBUG).
+- C++23 baseline reaffirmed — Glaze requires C++23 for its
+  compile-time reflection path. `CMakeLists.txt` already enforced this.
+
+### Added
+
+- `tests/glaze_test.cpp` — verifies parse-output shape parity with the
+  pre-migration behavior (null-safety on every scalar field,
+  unknown-key tolerance, dynamic DataPoint attribute preservation,
+  CDO list-response envelope walking, snake_case ↔ camelCase
+  JSON-key aliasing for `datacoverage` / `mindate` / `maxdate` /
+  `elevationUnit`).
+- `tests/parse_benchmark.cpp` — parse-throughput regression guard. Caps
+  at 200 us/op (≈3x slower than the migration-time Glaze number) with
+  a 30s ctest timeout.
+
+### Removed
+
+- `src/core/pagination.cpp` (the nlohmann `from_json` overload for
+  `ResultSetMetadata`). The CDO envelope is now parsed by a templated
+  Glaze meta specialization in `src/models/pagination_detail.hpp` (an
+  internal-only header).
+
 ## [0.1.1] - 2026-05-10
 
 ### CI

@@ -4,7 +4,6 @@
 
 #include <format>
 #include <iterator>
-#include <nlohmann/json.hpp>
 #include <utility>
 
 namespace ncei {
@@ -128,43 +127,50 @@ std::string CDOClient::build_data_query(const GetDataParams& params) {
 
 namespace {
 
+// Dispatch a single-record HTTP response body to its model-specific
+// `deserialize_*` overload. Wrapped in a template that selects the right
+// helper at call site so the per-endpoint code below stays uniform.
+
+Result<void> dispatch_deserialize(std::string_view body, Dataset& out) {
+	return deserialize_dataset(body, out);
+}
+Result<void> dispatch_deserialize(std::string_view body, DataCategory& out) {
+	return deserialize_data_category(body, out);
+}
+Result<void> dispatch_deserialize(std::string_view body, DataType& out) {
+	return deserialize_data_type(body, out);
+}
+Result<void> dispatch_deserialize(std::string_view body, LocationCategory& out) {
+	return deserialize_location_category(body, out);
+}
+Result<void> dispatch_deserialize(std::string_view body, Location& out) {
+	return deserialize_location(body, out);
+}
+Result<void> dispatch_deserialize(std::string_view body, CDOStation& out) {
+	return deserialize_station(body, out);
+}
+Result<void> dispatch_deserialize(std::string_view body, DataRecord& out) {
+	return deserialize_data_record(body, out);
+}
+
 template <typename T>
 Result<CDOResponse<T>> parse_list_response(const HttpResponse& response) {
-	try {
-		nlohmann::json j = nlohmann::json::parse(response.body);
-		CDOResponse<T> result;
-
-		// Parse metadata envelope
-		ResultSetMetadata meta;
-		from_json(j, meta);
-		result.metadata = meta;
-
-		// Parse results array
-		if (j.contains("results") && j["results"].is_array()) {
-			result.results.reserve(j["results"].size());
-			for (const nlohmann::json& item : j["results"]) {
-				T obj;
-				from_json(item, obj);
-				result.results.push_back(std::move(obj));
-			}
-		}
-
-		return result;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(std::string("JSON parse error: ") + e.what()));
+	CDOResponse<T> result;
+	Result<void> ec = deserialize_cdo_list(response.body, result);
+	if (!ec) {
+		return std::unexpected(ec.error());
 	}
+	return result;
 }
 
 template <typename T>
 Result<T> parse_single_response(const HttpResponse& response) {
-	try {
-		nlohmann::json j = nlohmann::json::parse(response.body);
-		T obj;
-		from_json(j, obj);
-		return obj;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(std::string("JSON parse error: ") + e.what()));
+	T obj;
+	Result<void> ec = dispatch_deserialize(response.body, obj);
+	if (!ec) {
+		return std::unexpected(ec.error());
 	}
+	return obj;
 }
 
 } // namespace

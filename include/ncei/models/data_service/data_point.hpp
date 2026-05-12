@@ -1,6 +1,5 @@
 #pragma once
 #include <cstdint>
-#include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -26,9 +25,6 @@ struct DataPointCollection {
 	std::vector<std::string> columns;
 	std::vector<DataPoint> records;
 };
-
-void from_json(const nlohmann::json& j, DataPoint& dp);
-void from_json(const nlohmann::json& j, DataPointCollection& dpc);
 
 [[nodiscard]] DataPointCollection parse_csv_data(std::string_view csv_text);
 [[nodiscard]] DataPointCollection parse_ssv_data(std::string_view ssv_text);
