@@ -48,5 +48,5 @@ You can expect:
 - Operational issues (rate-limit handling, network blips) — file a
   regular issue.
 - Theoretical issues against dependencies — report them upstream
-  (`openssl`, `libcurl`, `nlohmann/json`, `googletest`). We pin via
+  (`openssl`, `libcurl`, `Glaze`, `googletest`). We pin via
   FetchContent and bump on credible advisories.

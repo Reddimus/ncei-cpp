@@ -1,9 +1,10 @@
+#include "ncei/models/common.hpp"
 #include "ncei/models/data_service/data_point.hpp"
 #include "ncei/models/data_service/dataset_metadata.hpp"
 #include "ncei/models/data_service/search_result.hpp"
 
 #include <gtest/gtest.h>
-#include <nlohmann/json.hpp>
+#include <string>
 
 namespace ncei {
 namespace {
@@ -11,7 +12,7 @@ namespace {
 // --- DataPoint from JSON ---
 
 TEST(DataPointTest, FromJson) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"([{
 		"DATE": "2024-01-15",
 		"STATION": "USW00013874",
 		"NAME": "RALEIGH DURHAM INTL AP, NC US",
@@ -20,9 +21,12 @@ TEST(DataPointTest, FromJson) {
 		"ELEVATION": 124.4,
 		"TMAX": "122",
 		"TMIN": "44"
-	})");
-	DataPoint dp;
-	from_json(j, dp);
+	}])";
+	DataPointCollection dpc;
+	Result<void> r = deserialize_data_point_collection(body, dpc);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
+	ASSERT_EQ(dpc.records.size(), 1u);
+	const DataPoint& dp = dpc.records[0];
 	EXPECT_EQ(dp.date, "2024-01-15");
 	EXPECT_EQ(dp.station, "USW00013874");
 	EXPECT_EQ(dp.name, "RALEIGH DURHAM INTL AP, NC US");
@@ -80,7 +84,7 @@ TEST(DataPointTest, GetDoubleMissing) {
 // --- DataPointCollection from JSON array ---
 
 TEST(DataPointCollectionTest, FromJsonArray) {
-	nlohmann::json j = nlohmann::json::parse(R"([
+	const std::string body = R"([
 		{
 			"DATE": "2024-01-15",
 			"STATION": "USW00013874",
@@ -99,9 +103,10 @@ TEST(DataPointCollectionTest, FromJsonArray) {
 			"ELEVATION": 124.0,
 			"TMAX": "130"
 		}
-	])");
+	])";
 	DataPointCollection dpc;
-	from_json(j, dpc);
+	Result<void> r = deserialize_data_point_collection(body, dpc);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
 	EXPECT_FALSE(dpc.columns.empty());
 	ASSERT_EQ(dpc.records.size(), 2u);
 	EXPECT_EQ(dpc.records[0].date, "2024-01-15");
@@ -172,7 +177,7 @@ TEST(ParseSsvDataTest, BasicSsv) {
 // --- DataSearchResult ---
 
 TEST(DataSearchResultTest, FromJson) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"id": "USW00013874",
 		"name": "RALEIGH DURHAM INTL AP",
 		"latitude": 35.8917,
@@ -181,9 +186,10 @@ TEST(DataSearchResultTest, FromJson) {
 		"mindate": "1948-01-01",
 		"maxdate": "2024-12-31",
 		"datacoverage": 1.0
-	})");
+	})";
 	DataSearchResult r;
-	from_json(j, r);
+	Result<void> result = deserialize_data_search_result(body, r);
+	ASSERT_TRUE(result.has_value()) << (result ? "" : result.error().message);
 	EXPECT_EQ(r.station_id, "USW00013874");
 	EXPECT_EQ(r.station_name, "RALEIGH DURHAM INTL AP");
 	EXPECT_DOUBLE_EQ(r.latitude, 35.8917);
@@ -197,16 +203,17 @@ TEST(DataSearchResultTest, FromJson) {
 // --- DatasetSearchResult ---
 
 TEST(DatasetSearchResultTest, FromJson) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"uid": "gov.noaa.ncdc:C00861",
 		"name": "Daily Summaries",
 		"description": "Global daily weather data",
 		"startDate": "1763-01-01",
 		"endDate": "2024-12-31",
 		"dataTypes": ["TMAX", "TMIN", "PRCP"]
-	})");
+	})";
 	DatasetSearchResult r;
-	from_json(j, r);
+	Result<void> result = deserialize_dataset_search_result(body, r);
+	ASSERT_TRUE(result.has_value()) << (result ? "" : result.error().message);
 	EXPECT_EQ(r.uid, "gov.noaa.ncdc:C00861");
 	EXPECT_EQ(r.name, "Daily Summaries");
 	EXPECT_EQ(r.description, "Global daily weather data");
@@ -216,27 +223,10 @@ TEST(DatasetSearchResultTest, FromJson) {
 	EXPECT_EQ(r.data_types[0], "TMAX");
 }
 
-// --- DatasetField ---
-
-TEST(DatasetFieldTest, FromJson) {
-	nlohmann::json j = nlohmann::json::parse(R"({
-		"id": "TMAX",
-		"name": "Maximum Temperature",
-		"description": "Maximum temperature for the day",
-		"dataType": "number"
-	})");
-	DatasetField f;
-	from_json(j, f);
-	EXPECT_EQ(f.id, "TMAX");
-	EXPECT_EQ(f.name, "Maximum Temperature");
-	EXPECT_EQ(f.description, "Maximum temperature for the day");
-	EXPECT_EQ(f.data_type, "number");
-}
-
 // --- DatasetMetadata ---
 
 TEST(DatasetMetadataTest, FromJson) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"id": "daily-summaries",
 		"name": "Daily Summaries",
 		"description": "Global daily weather observations",
@@ -254,9 +244,10 @@ TEST(DatasetMetadataTest, FromJson) {
 				"dataType": "number"
 			}
 		]
-	})");
+	})";
 	DatasetMetadata m;
-	from_json(j, m);
+	Result<void> r = deserialize_dataset_metadata(body, m);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
 	EXPECT_EQ(m.id, "daily-summaries");
 	EXPECT_EQ(m.name, "Daily Summaries");
 	EXPECT_EQ(m.description, "Global daily weather observations");
@@ -268,12 +259,13 @@ TEST(DatasetMetadataTest, FromJson) {
 // --- Null safety ---
 
 TEST(DataSearchResultTest, NullFields) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"id": null, "name": null, "latitude": null, "longitude": null,
 		"elevation": null, "mindate": null, "maxdate": null, "datacoverage": null
-	})");
+	})";
 	DataSearchResult r;
-	from_json(j, r);
+	Result<void> result = deserialize_data_search_result(body, r);
+	ASSERT_TRUE(result.has_value()) << (result ? "" : result.error().message);
 	EXPECT_TRUE(r.station_id.empty());
 	EXPECT_TRUE(r.station_name.empty());
 	EXPECT_DOUBLE_EQ(r.latitude, 0.0);
@@ -281,11 +273,12 @@ TEST(DataSearchResultTest, NullFields) {
 }
 
 TEST(DatasetMetadataTest, NullFields) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"id": null, "name": null, "description": null
-	})");
+	})";
 	DatasetMetadata m;
-	from_json(j, m);
+	Result<void> r = deserialize_dataset_metadata(body, m);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
 	EXPECT_TRUE(m.id.empty());
 	EXPECT_TRUE(m.name.empty());
 	EXPECT_TRUE(m.fields.empty());

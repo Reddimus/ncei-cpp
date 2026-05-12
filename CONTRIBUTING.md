@@ -51,9 +51,15 @@ below).
   `make format` applies it.
 - **Includes**: project headers first, then system headers
   (enforced by clang-format `SortIncludes`).
-- **JSON**: use null-safe helpers from `models/common.hpp`. Do NOT use
-  `j.value("key", default)` — it throws on JSON null in nlohmann/json
-  v3.
+- **JSON**: Glaze v7.6.0 via FetchContent. Add new model types as
+  `glz::meta<T>` specializations in the per-model `.cpp` files, then
+  expose them through `deserialize_*` wrappers in
+  `include/ncei/models/common.hpp`. Use `ncei::detail::kReadOpts`
+  (defined in `src/models/common_glaze_detail.hpp`) to inherit the
+  CDO-friendly defaults (`error_on_unknown_keys = false`,
+  `skip_null_members_on_read = true`). For dynamic-key payloads
+  (DataPoint's user-driven attribute columns), use `glz::generic`
+  and tag the call site with a `// TODO(glaze):` marker.
 
 ## PR conventions
 

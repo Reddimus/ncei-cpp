@@ -1,6 +1,5 @@
 #pragma once
 
-#include <nlohmann/json_fwd.hpp>
 #include <string>
 
 namespace ncei {
@@ -16,7 +15,5 @@ struct CDOStation {
 	double elevation{0.0};
 	std::string elevation_unit;
 };
-
-void from_json(const nlohmann::json& j, CDOStation& s);
 
 } // namespace ncei

@@ -1,19 +1,29 @@
+// Copyright (c) 2026 PredictionMarketsAI
+// SPDX-License-Identifier: MIT
+
 #include "ncei/models/data_service/data_point.hpp"
 
 #include "ncei/csv_parser.hpp"
+#include "ncei/error.hpp"
 #include "ncei/models/common.hpp"
 
-#include <nlohmann/json.hpp>
+#include <algorithm>
+#include <exception>
+#include <glaze/glaze.hpp>
+#include <glaze/json/generic.hpp>
 #include <set>
-#include <stdexcept>
 #include <string>
+#include <string_view>
+#include <utility>
+
+#include "../common_glaze_detail.hpp"
 
 namespace ncei {
 
 namespace {
 
-const std::set<std::string> known_fields = {"DATE",		"STATION",	 "NAME",
-											"LATITUDE", "LONGITUDE", "ELEVATION"};
+const std::set<std::string, std::less<>> kKnownFields = {"DATE",	 "STATION",	  "NAME",
+														 "LATITUDE", "LONGITUDE", "ELEVATION"};
 
 void populate_from_row(DataPoint& dp, const std::vector<std::string>& headers,
 					   const std::vector<std::string>& values) {
@@ -72,6 +82,59 @@ DataPointCollection parse_delimited(std::string_view text, DelimitedParser::Deli
 	return collection;
 }
 
+// ===== Glaze AST walkers =====
+//
+// TODO(glaze): DataPoint has DYNAMIC KEYS (user-requested data types like
+// TMAX / TMIN / PRCP / SNOW are tacked on as siblings to the known
+// DATE/STATION/... fields), so we cannot pre-declare a glz::meta. We parse
+// the response into a glz::generic AST once and walk it. The same applies
+// to DataPointCollection because the per-record shape varies between
+// queries.
+
+void populate_data_point_from_object(const glz::generic& root, DataPoint& dp) {
+	if (!root.is_object()) {
+		return;
+	}
+	dp.date = detail::get_string(root, "DATE");
+	dp.station = detail::get_string(root, "STATION");
+	dp.name = detail::get_string(root, "NAME");
+	dp.latitude = detail::get_double(root, "LATITUDE");
+	dp.longitude = detail::get_double(root, "LONGITUDE");
+	dp.elevation = detail::get_double(root, "ELEVATION");
+
+	dp.attributes.clear();
+	for (const auto& [key, val] : root.get_object()) {
+		if (kKnownFields.find(key) != kKnownFields.end()) {
+			continue;
+		}
+		std::string value;
+		if (val.is_string()) {
+			value = val.get<std::string>();
+		} else if (val.is_number()) {
+			value = std::to_string(val.get<double>());
+		} else if (val.is_null()) {
+			value.clear();
+		} else {
+			// Re-serialize anything else (booleans, arrays, nested objects)
+			// to preserve information without forcing a typed schema.
+			glz::error_ctx ec = glz::write_json(val, value);
+			if (ec) {
+				value.clear();
+			}
+		}
+		dp.attributes.emplace_back(key, std::move(value));
+	}
+}
+
+void collect_columns(const glz::generic& obj, std::vector<std::string>& columns) {
+	if (!obj.is_object()) {
+		return;
+	}
+	for (const auto& [key, _] : obj.get_object()) {
+		columns.push_back(key);
+	}
+}
+
 } // namespace
 
 std::optional<std::string> DataPoint::get(std::string_view key) const {
@@ -95,56 +158,35 @@ std::optional<double> DataPoint::get_double(std::string_view key) const {
 	}
 }
 
-void from_json(const nlohmann::json& j, DataPoint& dp) {
-	dp.date = json_string(j, "DATE");
-	dp.station = json_string(j, "STATION");
-	dp.name = json_string(j, "NAME");
-	dp.latitude = json_double(j, "LATITUDE");
-	dp.longitude = json_double(j, "LONGITUDE");
-	dp.elevation = json_double(j, "ELEVATION");
+Result<void> deserialize_data_point_collection(std::string_view body, DataPointCollection& out) {
+	out.columns.clear();
+	out.records.clear();
 
-	dp.attributes.clear();
-	for (nlohmann::json::const_iterator it = j.begin(); it != j.end(); ++it) {
-		if (known_fields.find(it.key()) == known_fields.end()) {
-			std::string value;
-			if (it.value().is_string()) {
-				value = it.value().get<std::string>();
-			} else if (it.value().is_number()) {
-				value = std::to_string(it.value().get<double>());
-			} else if (!it.value().is_null()) {
-				value = it.value().dump();
-			}
-			dp.attributes.emplace_back(it.key(), std::move(value));
-		}
+	glz::generic root{};
+	glz::error_ctx ec = glz::read_json(root, body);
+	if (ec) {
+		return std::unexpected(Error::parse(glz::format_error(ec, body)));
 	}
-}
 
-void from_json(const nlohmann::json& j, DataPointCollection& dpc) {
-	dpc.columns.clear();
-	dpc.records.clear();
-
-	if (j.is_array()) {
-		if (!j.empty()) {
-			// Extract column names from first element's keys
-			for (nlohmann::json::const_iterator it = j[0].begin(); it != j[0].end(); ++it) {
-				dpc.columns.push_back(it.key());
-			}
+	if (root.is_array()) {
+		const glz::generic::array_t& arr = root.get_array();
+		if (!arr.empty()) {
+			collect_columns(arr.front(), out.columns);
 		}
-		dpc.records.reserve(j.size());
-		for (const nlohmann::json& item : j) {
+		out.records.reserve(arr.size());
+		for (const glz::generic& item : arr) {
 			DataPoint dp;
-			from_json(item, dp);
-			dpc.records.push_back(std::move(dp));
+			populate_data_point_from_object(item, dp);
+			out.records.push_back(std::move(dp));
 		}
-	} else if (j.is_object()) {
-		// Single record
-		for (nlohmann::json::const_iterator it = j.begin(); it != j.end(); ++it) {
-			dpc.columns.push_back(it.key());
-		}
+	} else if (root.is_object()) {
+		collect_columns(root, out.columns);
 		DataPoint dp;
-		from_json(j, dp);
-		dpc.records.push_back(std::move(dp));
+		populate_data_point_from_object(root, dp);
+		out.records.push_back(std::move(dp));
 	}
+
+	return {};
 }
 
 DataPointCollection parse_csv_data(std::string_view csv_text) {
