@@ -222,7 +222,7 @@ make run-data_service_search    # Dataset metadata (no auth)
 | Library | Purpose | Integration |
 |---------|---------|-------------|
 | libcurl | HTTP requests | `find_package(CURL)` |
-| nlohmann/json | JSON parsing | `FetchContent` |
+| Glaze v7.6.0 | JSON parsing (compile-time reflection) | `FetchContent` |
 | GoogleTest | Unit testing | `FetchContent` |
 | libnetcdf | NetCDF support (optional) | `find_package(netCDF)` |
 

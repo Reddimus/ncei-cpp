@@ -4,7 +4,6 @@
 
 #include <format>
 #include <iterator>
-#include <nlohmann/json.hpp>
 #include <utility>
 
 namespace ncei {
@@ -118,26 +117,24 @@ Result<DataPointCollection> DataServiceClient::get_data(const DataRequestParams&
 
 	ResponseFormat fmt = params.format.value_or(ResponseFormat::CSV);
 
-	try {
-		switch (fmt) {
-			case ResponseFormat::CSV:
-				return parse_csv_data(response->body);
-			case ResponseFormat::JSON: {
-				nlohmann::json j = nlohmann::json::parse(response->body);
-				DataPointCollection dpc;
-				from_json(j, dpc);
-				return dpc;
+	switch (fmt) {
+		case ResponseFormat::CSV:
+			return parse_csv_data(response->body);
+		case ResponseFormat::JSON: {
+			DataPointCollection dpc;
+			Result<void> ec = deserialize_data_point_collection(response->body, dpc);
+			if (!ec) {
+				return std::unexpected(ec.error());
 			}
-			case ResponseFormat::SSV:
-				return parse_ssv_data(response->body);
-			case ResponseFormat::PDF:
-			case ResponseFormat::NetCDF:
-				return std::unexpected(Error::invalid_request(
-					"PDF/NetCDF formats cannot be parsed as DataPointCollection; "
-					"use get_data_raw() instead"));
+			return dpc;
 		}
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(std::string("JSON parse error: ") + e.what()));
+		case ResponseFormat::SSV:
+			return parse_ssv_data(response->body);
+		case ResponseFormat::PDF:
+		case ResponseFormat::NetCDF:
+			return std::unexpected(Error::invalid_request(
+				"PDF/NetCDF formats cannot be parsed as DataPointCollection; "
+				"use get_data_raw() instead"));
 	}
 
 	return std::unexpected(Error::invalid_request("Unknown response format"));
@@ -165,14 +162,12 @@ Result<DatasetMetadata> DataServiceClient::get_dataset_metadata(const std::strin
 		return std::unexpected(Error::from_response(response->status_code, response->body));
 	}
 
-	try {
-		nlohmann::json j = nlohmann::json::parse(response->body);
-		DatasetMetadata meta;
-		from_json(j, meta);
-		return meta;
-	} catch (const nlohmann::json::exception& e) {
-		return std::unexpected(Error::parse(std::string("JSON parse error: ") + e.what()));
+	DatasetMetadata meta;
+	Result<void> ec = deserialize_dataset_metadata(response->body, meta);
+	if (!ec) {
+		return std::unexpected(ec.error());
 	}
+	return meta;
 }
 
 } // namespace ncei

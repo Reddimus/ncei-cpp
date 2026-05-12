@@ -1,21 +1,41 @@
+// Copyright (c) 2026 PredictionMarketsAI
+// SPDX-License-Identifier: MIT
+
 #include "ncei/models/cdo/station.hpp"
 
+#include "ncei/error.hpp"
 #include "ncei/models/common.hpp"
+#include "ncei/pagination.hpp"
 
-#include <nlohmann/json.hpp>
+#include <glaze/glaze.hpp>
+#include <string_view>
+
+#include "../pagination_detail.hpp"
+
+namespace ncei {} // namespace ncei
+
+template <>
+struct glz::meta<ncei::CDOStation> {
+	using T = ncei::CDOStation;
+	static constexpr auto value = // auto-ok: glz::object returns unspellable tuple
+		object("id", &T::id, "name", &T::name, "datacoverage", &T::data_coverage, "mindate",
+			   &T::min_date, "maxdate", &T::max_date, "latitude", &T::latitude, "longitude",
+			   &T::longitude, "elevation", &T::elevation, "elevationUnit", &T::elevation_unit);
+};
 
 namespace ncei {
 
-void from_json(const nlohmann::json& j, CDOStation& s) {
-	s.id = json_string(j, "id");
-	s.name = json_string(j, "name");
-	s.data_coverage = json_double(j, "datacoverage");
-	s.min_date = json_string(j, "mindate");
-	s.max_date = json_string(j, "maxdate");
-	s.latitude = json_double(j, "latitude");
-	s.longitude = json_double(j, "longitude");
-	s.elevation = json_double(j, "elevation");
-	s.elevation_unit = json_string(j, "elevationUnit");
+Result<void> deserialize_station(std::string_view body, CDOStation& out) {
+	glz::error_ctx ec = glz::read<detail::kReadOpts>(out, body);
+	if (ec) {
+		return std::unexpected(Error::parse(glz::format_error(ec, body)));
+	}
+	return {};
+}
+
+template <>
+Result<void> deserialize_cdo_list(std::string_view body, CDOResponse<CDOStation>& out) {
+	return detail::deserialize_cdo_list_impl(body, out);
 }
 
 } // namespace ncei

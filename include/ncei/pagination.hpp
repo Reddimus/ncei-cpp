@@ -1,6 +1,8 @@
 #pragma once
+#include "ncei/error.hpp"
+
 #include <cstdint>
-#include <nlohmann/json_fwd.hpp>
+#include <string_view>
 #include <vector>
 
 namespace ncei {
@@ -10,8 +12,6 @@ struct ResultSetMetadata {
 	std::int32_t count{0};
 	std::int32_t limit{25};
 };
-
-void from_json(const nlohmann::json& j, ResultSetMetadata& m);
 
 template <typename T>
 struct CDOResponse {

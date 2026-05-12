@@ -1,5 +1,4 @@
 #pragma once
-#include <nlohmann/json_fwd.hpp>
 #include <string>
 #include <vector>
 
@@ -18,8 +17,5 @@ struct DatasetMetadata {
 	std::string description;
 	std::vector<DatasetField> fields;
 };
-
-void from_json(const nlohmann::json& j, DatasetField& f);
-void from_json(const nlohmann::json& j, DatasetMetadata& m);
 
 } // namespace ncei

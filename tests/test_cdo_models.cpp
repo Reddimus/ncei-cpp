@@ -5,10 +5,11 @@
 #include "ncei/models/cdo/location.hpp"
 #include "ncei/models/cdo/location_category.hpp"
 #include "ncei/models/cdo/station.hpp"
+#include "ncei/models/common.hpp"
 #include "ncei/pagination.hpp"
 
 #include <gtest/gtest.h>
-#include <nlohmann/json.hpp>
+#include <string>
 
 namespace ncei {
 namespace {
@@ -16,15 +17,16 @@ namespace {
 // --- Dataset ---
 
 TEST(DatasetTest, FromJson) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"id": "GHCND",
 		"name": "Daily Summaries",
 		"datacoverage": 1.0,
 		"mindate": "1763-01-01",
 		"maxdate": "2024-12-31"
-	})");
+	})";
 	Dataset d;
-	from_json(j, d);
+	Result<void> r = deserialize_dataset(body, d);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
 	EXPECT_EQ(d.id, "GHCND");
 	EXPECT_EQ(d.name, "Daily Summaries");
 	EXPECT_DOUBLE_EQ(d.data_coverage, 1.0);
@@ -42,15 +44,16 @@ TEST(DatasetTest, DefaultConstruction) {
 }
 
 TEST(DatasetTest, NullFields) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"id": null,
 		"name": null,
 		"datacoverage": null,
 		"mindate": null,
 		"maxdate": null
-	})");
+	})";
 	Dataset d;
-	from_json(j, d);
+	Result<void> r = deserialize_dataset(body, d);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
 	EXPECT_TRUE(d.id.empty());
 	EXPECT_TRUE(d.name.empty());
 	EXPECT_DOUBLE_EQ(d.data_coverage, 0.0);
@@ -59,20 +62,22 @@ TEST(DatasetTest, NullFields) {
 // --- DataCategory ---
 
 TEST(DataCategoryTest, FromJson) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"id": "TEMP",
 		"name": "Air Temperature"
-	})");
+	})";
 	DataCategory dc;
-	from_json(j, dc);
+	Result<void> r = deserialize_data_category(body, dc);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
 	EXPECT_EQ(dc.id, "TEMP");
 	EXPECT_EQ(dc.name, "Air Temperature");
 }
 
 TEST(DataCategoryTest, NullFields) {
-	nlohmann::json j = nlohmann::json::parse(R"({"id": null, "name": null})");
+	const std::string body = R"({"id": null, "name": null})";
 	DataCategory dc;
-	from_json(j, dc);
+	Result<void> r = deserialize_data_category(body, dc);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
 	EXPECT_TRUE(dc.id.empty());
 	EXPECT_TRUE(dc.name.empty());
 }
@@ -80,15 +85,16 @@ TEST(DataCategoryTest, NullFields) {
 // --- DataType ---
 
 TEST(DataTypeTest, FromJson) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"id": "TMAX",
 		"name": "Maximum temperature",
 		"datacoverage": 0.95,
 		"mindate": "1900-01-01",
 		"maxdate": "2024-12-31"
-	})");
+	})";
 	DataType dt;
-	from_json(j, dt);
+	Result<void> r = deserialize_data_type(body, dt);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
 	EXPECT_EQ(dt.id, "TMAX");
 	EXPECT_EQ(dt.name, "Maximum temperature");
 	EXPECT_DOUBLE_EQ(dt.data_coverage, 0.95);
@@ -97,12 +103,13 @@ TEST(DataTypeTest, FromJson) {
 }
 
 TEST(DataTypeTest, NullFields) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"id": null, "name": null, "datacoverage": null,
 		"mindate": null, "maxdate": null
-	})");
+	})";
 	DataType dt;
-	from_json(j, dt);
+	Result<void> r = deserialize_data_type(body, dt);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
 	EXPECT_TRUE(dt.id.empty());
 	EXPECT_DOUBLE_EQ(dt.data_coverage, 0.0);
 }
@@ -110,20 +117,22 @@ TEST(DataTypeTest, NullFields) {
 // --- LocationCategory ---
 
 TEST(LocationCategoryTest, FromJson) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"id": "ST",
 		"name": "State"
-	})");
+	})";
 	LocationCategory lc;
-	from_json(j, lc);
+	Result<void> r = deserialize_location_category(body, lc);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
 	EXPECT_EQ(lc.id, "ST");
 	EXPECT_EQ(lc.name, "State");
 }
 
 TEST(LocationCategoryTest, NullFields) {
-	nlohmann::json j = nlohmann::json::parse(R"({"id": null, "name": null})");
+	const std::string body = R"({"id": null, "name": null})";
 	LocationCategory lc;
-	from_json(j, lc);
+	Result<void> r = deserialize_location_category(body, lc);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
 	EXPECT_TRUE(lc.id.empty());
 	EXPECT_TRUE(lc.name.empty());
 }
@@ -131,15 +140,16 @@ TEST(LocationCategoryTest, NullFields) {
 // --- Location ---
 
 TEST(LocationTest, FromJson) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"id": "FIPS:37",
 		"name": "North Carolina",
 		"datacoverage": 1.0,
 		"mindate": "1869-03-01",
 		"maxdate": "2024-12-31"
-	})");
+	})";
 	Location l;
-	from_json(j, l);
+	Result<void> r = deserialize_location(body, l);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
 	EXPECT_EQ(l.id, "FIPS:37");
 	EXPECT_EQ(l.name, "North Carolina");
 	EXPECT_DOUBLE_EQ(l.data_coverage, 1.0);
@@ -148,12 +158,13 @@ TEST(LocationTest, FromJson) {
 }
 
 TEST(LocationTest, NullFields) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"id": null, "name": null, "datacoverage": null,
 		"mindate": null, "maxdate": null
-	})");
+	})";
 	Location l;
-	from_json(j, l);
+	Result<void> r = deserialize_location(body, l);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
 	EXPECT_TRUE(l.id.empty());
 	EXPECT_DOUBLE_EQ(l.data_coverage, 0.0);
 }
@@ -161,7 +172,7 @@ TEST(LocationTest, NullFields) {
 // --- CDOStation ---
 
 TEST(CDOStationTest, FromJson) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"id": "GHCND:USW00013874",
 		"name": "RALEIGH DURHAM INTERNATIONAL AIRPORT, NC US",
 		"datacoverage": 1.0,
@@ -171,9 +182,10 @@ TEST(CDOStationTest, FromJson) {
 		"longitude": -78.7833,
 		"elevation": 124.4,
 		"elevationUnit": "METERS"
-	})");
+	})";
 	CDOStation s;
-	from_json(j, s);
+	Result<void> r = deserialize_station(body, s);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
 	EXPECT_EQ(s.id, "GHCND:USW00013874");
 	EXPECT_EQ(s.name, "RALEIGH DURHAM INTERNATIONAL AIRPORT, NC US");
 	EXPECT_DOUBLE_EQ(s.data_coverage, 1.0);
@@ -186,14 +198,15 @@ TEST(CDOStationTest, FromJson) {
 }
 
 TEST(CDOStationTest, NullFields) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"id": null, "name": null, "datacoverage": null,
 		"mindate": null, "maxdate": null,
 		"latitude": null, "longitude": null,
 		"elevation": null, "elevationUnit": null
-	})");
+	})";
 	CDOStation s;
-	from_json(j, s);
+	Result<void> r = deserialize_station(body, s);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
 	EXPECT_TRUE(s.id.empty());
 	EXPECT_DOUBLE_EQ(s.latitude, 0.0);
 	EXPECT_DOUBLE_EQ(s.longitude, 0.0);
@@ -204,15 +217,16 @@ TEST(CDOStationTest, NullFields) {
 // --- DataRecord ---
 
 TEST(DataRecordTest, FromJson) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"date": "2024-01-15T00:00:00",
 		"datatype": "TMAX",
 		"station": "GHCND:USW00013874",
 		"attributes": ",,N,2400",
 		"value": 122
-	})");
+	})";
 	DataRecord d;
-	from_json(j, d);
+	Result<void> r = deserialize_data_record(body, d);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
 	EXPECT_EQ(d.date, "2024-01-15T00:00:00");
 	EXPECT_EQ(d.datatype, "TMAX");
 	EXPECT_EQ(d.station, "GHCND:USW00013874");
@@ -221,21 +235,22 @@ TEST(DataRecordTest, FromJson) {
 }
 
 TEST(DataRecordTest, NullFields) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"date": null, "datatype": null, "station": null,
 		"attributes": null, "value": null
-	})");
+	})";
 	DataRecord d;
-	from_json(j, d);
+	Result<void> r = deserialize_data_record(body, d);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
 	EXPECT_TRUE(d.date.empty());
 	EXPECT_TRUE(d.datatype.empty());
 	EXPECT_DOUBLE_EQ(d.value, 0.0);
 }
 
-// --- CDOResponse ---
+// --- CDOResponse envelope ---
 
 TEST(CDOResponseDatasetTest, FromJsonWithMetadata) {
-	nlohmann::json j = nlohmann::json::parse(R"({
+	const std::string body = R"({
 		"metadata": {
 			"resultset": {
 				"offset": 0,
@@ -259,29 +274,21 @@ TEST(CDOResponseDatasetTest, FromJsonWithMetadata) {
 				"maxdate": "2024-11-01"
 			}
 		]
-	})");
+	})";
 
 	CDOResponse<Dataset> resp;
-	from_json(j, resp.metadata);
+	Result<void> r = deserialize_cdo_list(body, resp);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
 
 	EXPECT_EQ(resp.metadata.offset, 0);
 	EXPECT_EQ(resp.metadata.count, 2);
 	EXPECT_EQ(resp.metadata.limit, 25);
-
-	if (j.contains("results") && j["results"].is_array()) {
-		for (const nlohmann::json& item : j["results"]) {
-			Dataset ds;
-			from_json(item, ds);
-			resp.results.push_back(std::move(ds));
-		}
-	}
-
 	ASSERT_EQ(resp.results.size(), 2u);
 	EXPECT_EQ(resp.results[0].id, "GHCND");
 	EXPECT_EQ(resp.results[1].id, "GSOM");
 }
 
-TEST(CDOResponseTest, HasMoreTrue) {
+TEST(CDOResponseDatasetTest, HasMoreTrue) {
 	CDOResponse<Dataset> resp;
 	resp.metadata.offset = 0;
 	resp.metadata.limit = 25;
@@ -289,7 +296,7 @@ TEST(CDOResponseTest, HasMoreTrue) {
 	EXPECT_TRUE(resp.has_more());
 }
 
-TEST(CDOResponseTest, HasMoreFalseAtEnd) {
+TEST(CDOResponseDatasetTest, HasMoreFalseAtEnd) {
 	CDOResponse<Dataset> resp;
 	resp.metadata.offset = 75;
 	resp.metadata.limit = 25;
@@ -300,14 +307,24 @@ TEST(CDOResponseTest, HasMoreFalseAtEnd) {
 // --- Missing fields ---
 
 TEST(DatasetTest, MissingFields) {
-	nlohmann::json j = nlohmann::json::parse(R"({"id": "GHCND"})");
+	const std::string body = R"({"id": "GHCND"})";
 	Dataset d;
-	from_json(j, d);
+	Result<void> r = deserialize_dataset(body, d);
+	ASSERT_TRUE(r.has_value()) << (r ? "" : r.error().message);
 	EXPECT_EQ(d.id, "GHCND");
 	EXPECT_TRUE(d.name.empty());
 	EXPECT_DOUBLE_EQ(d.data_coverage, 0.0);
 	EXPECT_TRUE(d.min_date.empty());
 	EXPECT_TRUE(d.max_date.empty());
+}
+
+// --- Invalid JSON ---
+
+TEST(DatasetTest, RejectsInvalidJson) {
+	const std::string body = R"({"id": "GHCND")"; // missing closing brace
+	Dataset d;
+	Result<void> r = deserialize_dataset(body, d);
+	EXPECT_FALSE(r.has_value());
 }
 
 } // namespace

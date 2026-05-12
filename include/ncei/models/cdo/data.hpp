@@ -1,6 +1,5 @@
 #pragma once
 
-#include <nlohmann/json_fwd.hpp>
 #include <string>
 
 namespace ncei {
@@ -12,7 +11,5 @@ struct DataRecord {
 	std::string attributes;
 	double value{0.0};
 };
-
-void from_json(const nlohmann::json& j, DataRecord& d);
 
 } // namespace ncei
