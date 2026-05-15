@@ -6,6 +6,22 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `.editorconfig` (fleet-standard: tabs, 4-width, LF, UTF-8, 100-col
+  max for C++). Sibling to `.clang-format`; covers editors that don't
+  read `.clang-format` (#12).
+- `make pre-commit` + `make install-hooks` targets — auto-format + lint
+  via git pre-commit hook (#8).
+
+### Changed
+
+- README install snippet pinned to v0.2.0 (#9, #10).
+
+### Fixed
+
+- LICENSE: copyright holder de-truncated (#11).
+
 ## [0.2.0] - 2026-05-12
 
 ### Changed
