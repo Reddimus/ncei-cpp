@@ -42,3 +42,7 @@ make clean          # Remove build/
 - No authentication required
 - Default format: CSV (most reliable), also JSON, SSV
 - `+` in timezone offsets must be URL-encoded as `%2B`
+
+## CI
+
+GitHub Actions workflow `.github/workflows/ci.yml`: build + test + lint on Ubuntu 24.04, build + test + lint on macos-latest, build + test on windows-latest (no clang-format step — Windows toolchain lacks a uniform clang-format), markdown-lint via DavidAnson. Release workflow auto-creates a GitHub Release on `vX.Y.Z` tag push (notes extracted from `CHANGELOG.md`).
