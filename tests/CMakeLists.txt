@@ -11,6 +11,7 @@ add_executable(ncei_tests
     test_cdo_client.cpp
     test_data_service_models.cpp
     test_data_service_client.cpp
+    test_climate_index.cpp
 )
 target_link_libraries(ncei_tests PRIVATE
     ncei_core ncei_http ncei_models ncei_cdo ncei_data
