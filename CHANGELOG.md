@@ -6,8 +6,21 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-17
+
 ### Added
 
+- **National-climate settlement feeds.** `ncei/models/climate_index.hpp`
+  with `deserialize_cag_series` (NCEI Climate at a Glance / NOAAGlobalTemp
+  `data.json` — "hottest year rank"), `deserialize_gistemp_csv` (NASA
+  GISTEMP `GLB.Ts+dSST.csv` cross-check), and
+  `deserialize_nsidc_sea_ice_csv` (NSIDC Sea Ice Index v4 — "minimum
+  Arctic sea-ice extent"). New `MonitoringClient`
+  (`get_cag_global_annual` / `get_gistemp_global` /
+  `get_nsidc_arctic_extent`). `HttpClient` now passes absolute URLs
+  through unchanged so one client reaches all three hosts (ncei.noaa.gov,
+  data.giss.nasa.gov, noaadata.apps.nsidc.org); relative CDO / Data
+  Service paths are unaffected. Consumed by polymarket-data (Phase 3c).
 - `.editorconfig` (fleet-standard: tabs, 4-width, LF, UTF-8, 100-col
   max for C++). Sibling to `.clang-format`; covers editors that don't
   read `.clang-format` (#12).
@@ -135,7 +148,8 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   location_categories, locations, stations, data) + Data Service
   (data, metadata)
 
-[Unreleased]: https://github.com/Reddimus/ncei-cpp/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Reddimus/ncei-cpp/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Reddimus/ncei-cpp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Reddimus/ncei-cpp/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Reddimus/ncei-cpp/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Reddimus/ncei-cpp/releases/tag/v0.1.0

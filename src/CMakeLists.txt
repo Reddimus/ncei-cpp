@@ -41,6 +41,7 @@ add_library(ncei_models STATIC
     models/data_service/data_point.cpp
     models/data_service/search_result.cpp
     models/data_service/dataset_metadata.cpp
+    models/climate_index.cpp
 )
 target_link_libraries(ncei_models PUBLIC ncei_core)
 target_include_directories(ncei_models PUBLIC
@@ -62,6 +63,7 @@ target_include_directories(ncei_cdo PUBLIC
 # Data Service Client library
 add_library(ncei_data STATIC
     api/data_service_client.cpp
+    api/monitoring_client.cpp
 )
 target_link_libraries(ncei_data PUBLIC ncei_core ncei_http ncei_models)
 target_include_directories(ncei_data PUBLIC

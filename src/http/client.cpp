@@ -64,7 +64,13 @@ Result<HttpResponse> HttpClient::get(std::string_view path) const {
 	}
 
 	CURL* curl = impl_->curl;
-	std::string url = impl_->config.base_url + std::string(path);
+	// Absolute URLs pass through unchanged so one client can reach the
+	// several hosts the climate-index feeds live on (ncei.noaa.gov,
+	// data.giss.nasa.gov, noaadata.apps.nsidc.org). Relative paths keep
+	// the base_url prefix (CDO / Data Service behaviour, unchanged).
+	std::string url = (path.starts_with("http://") || path.starts_with("https://"))
+						  ? std::string(path)
+						  : impl_->config.base_url + std::string(path);
 	std::string body;
 	std::vector<std::pair<std::string, std::string>> response_headers;
 

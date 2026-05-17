@@ -12,6 +12,16 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # FetchContent clones glaze/googletest anonymously; GitHub
+      # rate-limits anonymous clones under load (intermittent 403).
+      # Rewriting to the workflow token makes the clone authenticated
+      # (much higher limit) and removes the recurring flake.
+      - name: Authenticate git for FetchContent
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -33,6 +43,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Authenticate git for FetchContent
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+
       - name: Install dependencies
         run: |
           brew install pkg-config curl clang-format
@@ -51,6 +67,13 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
+
+      - name: Authenticate git for FetchContent
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global url."https://x-access-token:$env:GH_TOKEN@github.com/".insteadOf "https://github.com/"
 
       - name: Install dependencies (vcpkg)
         shell: pwsh
