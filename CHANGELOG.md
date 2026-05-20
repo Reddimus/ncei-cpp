@@ -6,6 +6,33 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-05-19
+
+### Fixed
+
+- **NCEI CAG response format flip.** Upstream NCEI Climate at a Glance
+  `data.json` (`/access/monitoring/climate-at-a-glance/global/...`) now
+  wraps each year's value in an object envelope:
+
+      old:  "1851": "-0.12"          (bare string)
+      new:  "1851": {"departure": -0.12}   (nested-object form)
+
+  `deserialize_cag_series` previously matched only the bare string /
+  numeric forms, so every row dropped silently and the parser raised
+  `CAG: empty data series`. As a result the polymarket-data
+  `climate-index` ingester (#79) couldn't populate the `ncei_cag`
+  series — gistemp + nsidc continued to work; the CAG cross-check did
+  not. Detected 2026-05-19 via the climate-index startup log.
+
+  The deserializer now tolerates BOTH forms: the legacy bare
+  string/number stays accepted (so a future NCEI flip back doesn't
+  re-break us), and the new `{"departure": <num|str>}` envelope is
+  unwrapped. Any other inner keys (e.g. a future `"rank"` /
+  `"uncertainty"`) are ignored. Tests in
+  `tests/test_climate_index.cpp::ParsesCagDepartureObjectForm` /
+  `ParsesCagDepartureStringInsideObject` /
+  `RejectsCagObjectWithoutDeparture` pin all three regimes.
+
 ## [0.3.0] - 2026-05-17
 
 ### Added

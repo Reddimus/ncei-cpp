@@ -80,10 +80,30 @@ Result<void> deserialize_cag_series(std::string_view body, CagSeries& out) {
 		double v = 0.0;
 		bool ok = false;
 		if (kv.second.is_string()) {
+			// Legacy form: bare string like "-0.19" or "+1.29".
 			ok = parse_value(kv.second.get<std::string>(), v);
 		} else if (kv.second.is_number()) {
+			// Legacy form: bare numeric.
 			v = kv.second.get<double>();
 			ok = true;
+		} else if (kv.second.is_object()) {
+			// Current NCEI CAG form (observed 2026-05-19): each year's
+			// value is an object with a "departure" key, e.g.
+			//   "1851": {"departure": -0.12}
+			// where "departure" can be either a string or a number.
+			// Tolerate both forms here so a future NCEI flip back to
+			// bare values doesn't re-break us. Any other inner keys
+			// (e.g. a future "uncertainty" / "rank") are ignored.
+			const glz::generic::object_t& inner = kv.second.get_object();
+			const glz::generic::object_t::const_iterator dep = inner.find("departure");
+			if (dep != inner.end()) {
+				if (dep->second.is_string()) {
+					ok = parse_value(dep->second.get<std::string>(), v);
+				} else if (dep->second.is_number()) {
+					v = dep->second.get<double>();
+					ok = true;
+				}
+			}
 		}
 		if (ok) {
 			out.data.push_back(ClimatePoint{kv.first, v});
