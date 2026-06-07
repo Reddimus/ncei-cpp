@@ -89,13 +89,27 @@ Result<HttpResponse> HttpClient::get(std::string_view path) const {
 	}
 
 	// Set Accept header and extra headers
+	// curl_slist_append returns nullptr on allocation failure WITHOUT freeing
+	// the existing list — assigning its result straight back to `headers` would
+	// then leak the prior nodes and silently drop headers. Capture, check, free
+	// + error on failure.
 	struct curl_slist* headers = nullptr;
 	std::string accept_header = "Accept: " + impl_->config.accept;
-	headers = curl_slist_append(headers, accept_header.c_str());
+	struct curl_slist* appended = curl_slist_append(headers, accept_header.c_str());
+	if (appended == nullptr) {
+		curl_slist_free_all(headers);
+		return std::unexpected(Error::network("failed to build request headers"));
+	}
+	headers = appended;
 
 	for (const std::pair<std::string, std::string>& hdr : impl_->config.extra_headers) {
 		std::string header_line = hdr.first + ": " + hdr.second;
-		headers = curl_slist_append(headers, header_line.c_str());
+		appended = curl_slist_append(headers, header_line.c_str());
+		if (appended == nullptr) {
+			curl_slist_free_all(headers);
+			return std::unexpected(Error::network("failed to build request headers"));
+		}
+		headers = appended;
 	}
 
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
