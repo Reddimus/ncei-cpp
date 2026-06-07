@@ -1,6 +1,8 @@
 #include "ncei/rate_limit.hpp"
 
+#include <cstdint>
 #include <gtest/gtest.h>
+#include <limits>
 
 namespace ncei {
 namespace {
@@ -127,6 +129,12 @@ TEST(RateLimiterTest, NoDailyLimitWhenZero) {
 	EXPECT_TRUE(limiter.try_acquire());
 	EXPECT_TRUE(limiter.try_acquire());
 	EXPECT_TRUE(limiter.try_acquire());
+
+	// Regression: a disabled daily limit must report "unlimited" headroom, NOT
+	// 0. CDOClient::do_get() rejects with quota_exceeded when remaining <= 0, so
+	// returning 0 here would block every request whenever the cap is disabled.
+	EXPECT_GT(limiter.daily_requests_remaining(), 0);
+	EXPECT_EQ(limiter.daily_requests_remaining(), std::numeric_limits<std::int32_t>::max());
 }
 
 TEST(RateLimiterTest, DailyCounterResetsOnReset) {

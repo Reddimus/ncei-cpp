@@ -1,5 +1,7 @@
 #include "ncei/rate_limit.hpp"
 
+#include <limits>
+
 namespace ncei {
 
 RateLimiter::RateLimiter(Config config)
@@ -81,7 +83,11 @@ std::uint16_t RateLimiter::available_tokens() const noexcept {
 std::int32_t RateLimiter::daily_requests_remaining() const noexcept {
 	std::lock_guard<std::mutex> lock(mutex_);
 	if (config_.daily_limit <= 0) {
-		return 0;
+		// daily_limit <= 0 means "no daily cap" (see rate_limit.hpp). Signal
+		// unlimited headroom — NOT 0, which callers (CDOClient::do_get) treat
+		// as quota-exhausted and would reject every request when the cap is
+		// intentionally disabled.
+		return std::numeric_limits<std::int32_t>::max();
 	}
 	return config_.daily_limit - daily_requests_used_;
 }
