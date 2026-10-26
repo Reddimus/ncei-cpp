@@ -6,6 +6,10 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Enforce the Release parse benchmark limit when CMake supplies an empty argument.
+
 ## [0.4.0] - 2026-10-25
 
 ### Fixed
