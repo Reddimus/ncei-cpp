@@ -163,6 +163,9 @@ std::optional<double> DataPoint::get_double(std::string_view key) const {
 		text = text.substr(begin, text.find_last_not_of(" \t\r\n") - begin + 1);
 		if (text.starts_with('+')) {
 			text.remove_prefix(1);
+			if (text.empty() || text.starts_with('+') || text.starts_with('-')) {
+				return std::nullopt;
+			}
 		}
 		const std::from_chars_result parsed =
 			std::from_chars(text.data(), text.data() + text.size(), number);

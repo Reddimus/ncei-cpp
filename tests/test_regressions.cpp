@@ -198,3 +198,23 @@ TEST(Regression, DailySeaIceFlagAndFailureOutputArePreserved) {
 	EXPECT_EQ(out.extent.size(), 1);
 }
 } // namespace ncei
+
+namespace ncei {
+TEST(Regression, NumericTextRejectsMultipleSigns) {
+	for (const std::string& text : {"+-1.2", "++1.2", "+", "--1.2", "-+1.2"}) {
+		DataPoint point;
+		point.attributes.emplace_back("TMAX", text);
+		EXPECT_FALSE(point.get_double("TMAX")) << text;
+		CagSeries series;
+		EXPECT_FALSE(deserialize_cag_series("{\"data\":{\"2024\":\"" + text + "\"}}", series))
+			<< text;
+	}
+	DataPoint point;
+	point.attributes.emplace_back("TMAX", "+1.2");
+	EXPECT_EQ(point.get_double("TMAX"), 1.2);
+	CagSeries series;
+	ASSERT_TRUE(deserialize_cag_series(R"({"data":{"2024":"+1.2"}})", series));
+	ASSERT_EQ(series.data.size(), 1);
+	EXPECT_EQ(series.data.front().value, 1.2);
+}
+} // namespace ncei

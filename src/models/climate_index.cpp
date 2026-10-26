@@ -41,6 +41,9 @@ bool parse_value(std::string_view raw, double& out) {
 	std::string_view number = t;
 	if (number.starts_with('+')) {
 		number.remove_prefix(1);
+		if (number.empty() || number.starts_with('+') || number.starts_with('-')) {
+			return false;
+		}
 	}
 	double v = 0;
 	const std::from_chars_result result =
