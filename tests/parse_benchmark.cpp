@@ -57,7 +57,7 @@ std::string make_payload() {
 
 } // namespace
 
-int main(int argc, char**) {
+int main(int argc, char** argv) {
 	const std::string payload = make_payload();
 	constexpr int kIterations = 1000;
 
@@ -99,7 +99,7 @@ int main(int argc, char**) {
 	// faster than the nlohmann baseline (~360-590 us/op) and leaves a
 	// healthy slack window for slower CI runners and Debug builds.
 	constexpr double kMaxUsPerOp = 200.0;
-	if (argc == 1 && us_per_op > kMaxUsPerOp) {
+	if (!(argc == 2 && std::string_view(argv[1]) == "--no-timing") && us_per_op > kMaxUsPerOp) {
 		std::fprintf(stderr, "REGRESSION: %.3f us/op exceeds cap of %.0f us/op\n", us_per_op,
 					 kMaxUsPerOp);
 		return 1;
