@@ -24,10 +24,12 @@ struct glz::meta<ncei::DataCategory> {
 namespace ncei {
 
 Result<void> deserialize_data_category(std::string_view body, DataCategory& out) {
-	glz::error_ctx ec = glz::read<detail::kReadOpts>(out, body);
+	DataCategory parsed{};
+	glz::error_ctx ec = glz::read<detail::kReadOpts>(parsed, body);
 	if (ec) {
 		return std::unexpected(Error::parse(glz::format_error(ec, body)));
 	}
+	out = std::move(parsed);
 	return {};
 }
 

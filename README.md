@@ -78,21 +78,21 @@ int main() {
 ## Features
 
 - **Two API clients**: CDOClient (legacy, token auth) + DataServiceClient (newer, no auth)
-- **C++23** with `std::expected<T, Error>` — no exceptions
+- **C++23** with `std::expected<T, Error>` for request and parse errors; allocation failures can throw
 - **Auto-pagination**: CDOClient fetches all pages transparently
 - **Auto-date-splitting**: Multi-year queries automatically split into 1-year chunks (CDO API limit)
 - **Multi-format parsing**: CSV, JSON, SSV parsed into typed `DataPointCollection`
 - **Rate limiting**: Token bucket (5 req/sec) + daily counter (10K/day) for CDO API
 - **Retry with backoff**: Configurable exponential backoff with jitter
 - **Null-safe JSON**: Custom helpers prevent crashes on null API values
-- **166 unit tests** with fixture data
+- **Offline regression tests** with fixture data
 
 ## Building
 
 ### Requirements
 
 - C++23 compiler (GCC 13+, Clang 16+)
-- CMake 3.20+
+- CMake 3.31+
 - libcurl
 
 ### Build
@@ -112,16 +112,18 @@ make coverage     # Code coverage report (requires lcov)
 | `NCEI_BUILD_TESTS` | `ON` | Build unit tests |
 | `NCEI_BUILD_EXAMPLES` | `ON` | Build examples |
 | `NCEI_ENABLE_LTO` | `ON` | Link-time optimization |
-| `NCEI_ENABLE_NETCDF` | `OFF` | NetCDF format support (requires libnetcdf) |
+| `NCEI_ENABLE_NETCDF` | `OFF` | Reserved; no decoder is implemented |
 | `NCEI_ENABLE_SANITIZERS` | `OFF` | ASan + UBSan |
 
-### Using as a Dependency
+Embedded builds default tests, examples, and LTO to OFF and preserve parent release flags.
+
+## Using as a Dependency
 
 ```cmake
 include(FetchContent)
 FetchContent_Declare(ncei-cpp
     GIT_REPOSITORY https://github.com/Reddimus/ncei-cpp.git
-    GIT_TAG v0.3.1
+    GIT_TAG v0.4.0
 )
 FetchContent_MakeAvailable(ncei-cpp)
 target_link_libraries(myapp PRIVATE ncei)
@@ -168,7 +170,7 @@ sequenceDiagram
     App->>CDOClient: get_data_all(3-year range)
     CDOClient->>CDOClient: split_date_range(365 days)
     loop Each 1-year chunk
-        loop Each page (offset 0, 1000, ...)
+        loop Each page (offset 1, 1001, ...)
             CDOClient->>RateLimiter: acquire()
             RateLimiter-->>CDOClient: token granted
             CDOClient->>HttpClient: GET /data?...
@@ -222,16 +224,21 @@ make run-data_service_search    # Dataset metadata (no auth)
 | Library | Purpose | Integration |
 |---------|---------|-------------|
 | libcurl | HTTP requests | `find_package(CURL)` |
-| Glaze v7.6.0 | JSON parsing (compile-time reflection) | `FetchContent` |
+| Glaze v9.0.0 | JSON parsing (compile-time reflection) | `FetchContent` |
 | GoogleTest | Unit testing | `FetchContent` |
-| libnetcdf | NetCDF support (optional) | `find_package(netCDF)` |
+
+Date utilities validate YYYY-MM-DD and throw for invalid dates or ranges. Client methods return request/parse errors through Result; allocation failures can throw. HTTP responses default to a 64 MiB decompressed limit (`max_response_bytes=0` disables it). Extra request headers disable automatic redirects to avoid forwarding credentials.
+
+Access metadata maps `dataTypes` into `DatasetMetadata::fields`, including units and scale factors. Data values retain upstream scaling.
+
+CDO metadata uses one-based record offsets. Every retry consumes a pacing token and daily quota. Quota reset is tracked at UTC midnight; quotas used outside this process are not tracked. `make bench` parses offline and makes no requests. NetCDF/PDF bytes are available through `get_data_raw()`; no decoder is included.
 
 ## References
 
-- [CDO Web Services v2 Documentation](https://www.ncdc.noaa.gov/cdo-web/webservices/v2)
+- [CDO Web Services v2 Documentation](https://www.ncei.noaa.gov/cdo-web/webservices/v2)
 - [NCEI Access Data Service API Documentation](https://www.ncei.noaa.gov/support/access-data-service-api-user-documentation)
 - [NCEI Data Access Portal](https://www.ncei.noaa.gov/access)
-- [CDO API Token Registration](https://www.ncdc.noaa.gov/cdo-web/token)
+- [CDO API Token Registration](https://www.ncei.noaa.gov/cdo-web/token)
 - [NCEI API Guide (Community)](https://github.com/partytax/ncei-api-guide)
 - [Available CDO Datasets](https://www.ncei.noaa.gov/cdo-web/datasets)
 

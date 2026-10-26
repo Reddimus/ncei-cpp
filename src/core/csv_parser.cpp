@@ -3,6 +3,32 @@
 #include <sstream>
 
 namespace ncei {
+namespace {
+std::string_view next_record(std::string_view text, std::size_t& start) {
+	const std::size_t begin = start;
+	bool quoted = false;
+	while (start < text.size()) {
+		const char value = text[start++];
+		if (value == '"') {
+			if (quoted && start < text.size() && text[start] == '"') {
+				++start;
+			} else {
+				quoted = !quoted;
+			}
+		} else if (value == '\n' && !quoted) {
+			break;
+		}
+	}
+	std::string_view record = text.substr(begin, start - begin);
+	if (record.ends_with('\n')) {
+		record.remove_suffix(1);
+	}
+	if (record.ends_with('\r')) {
+		record.remove_suffix(1);
+	}
+	return record;
+}
+} // namespace
 
 DelimitedParser::DelimitedParser(Delimiter delim) : delimiter_(delim) {}
 
@@ -37,6 +63,8 @@ std::vector<std::string> DelimitedParser::parse_line(std::string_view line) cons
 			// Skip delimiter after closing quote
 			if (i < len && line[i] == delim) {
 				++i;
+			} else if (i == len) {
+				break;
 			}
 		} else {
 			// Unquoted field
@@ -57,46 +85,19 @@ std::vector<std::string> DelimitedParser::parse_line(std::string_view line) cons
 }
 
 std::vector<std::string> DelimitedParser::parse_header(std::string_view text) const {
-	// Find first line
-	std::size_t pos = text.find('\n');
-	std::string_view first_line = (pos != std::string_view::npos) ? text.substr(0, pos) : text;
-	// Strip trailing \r
-	if (!first_line.empty() && first_line.back() == '\r') {
-		first_line = first_line.substr(0, first_line.size() - 1);
-	}
-	return parse_line(first_line);
+	std::size_t start = 0;
+	return parse_line(next_record(text, start));
 }
 
 std::vector<std::vector<std::string>> DelimitedParser::parse(std::string_view text) const {
 	std::vector<std::vector<std::string>> rows;
-	if (text.empty()) {
-		return rows;
-	}
-
 	std::size_t start = 0;
-	std::size_t len = text.size();
-
-	while (start < len) {
-		std::size_t pos = text.find('\n', start);
-		std::string_view line;
-		if (pos != std::string_view::npos) {
-			line = text.substr(start, pos - start);
-			start = pos + 1;
-		} else {
-			line = text.substr(start);
-			start = len;
+	while (start < text.size()) {
+		const std::string_view record = next_record(text, start);
+		if (!record.empty()) {
+			rows.push_back(parse_line(record));
 		}
-		// Strip trailing \r
-		if (!line.empty() && line.back() == '\r') {
-			line = line.substr(0, line.size() - 1);
-		}
-		// Skip empty lines
-		if (line.empty()) {
-			continue;
-		}
-		rows.push_back(parse_line(line));
 	}
-
 	return rows;
 }
 

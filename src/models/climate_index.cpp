@@ -5,8 +5,10 @@
 
 #include "ncei/csv_parser.hpp"
 
+#include <algorithm>
 #include <cctype>
-#include <cstdlib>
+#include <charconv>
+#include <cmath>
 #include <glaze/glaze.hpp>
 #include <glaze/json/generic.hpp>
 #include <string>
@@ -36,10 +38,18 @@ bool parse_value(std::string_view raw, double& out) {
 	if (t.empty() || t == "***" || t == "-9999" || t == "-99.99" || t == "NA") {
 		return false;
 	}
-	const char* b = t.c_str();
-	char* end = nullptr;
-	const double v = std::strtod(b, &end);
-	if (end == b) {
+	std::string_view number = t;
+	if (number.starts_with('+')) {
+		number.remove_prefix(1);
+		if (number.empty() || number.starts_with('+') || number.starts_with('-')) {
+			return false;
+		}
+	}
+	double v = 0;
+	const std::from_chars_result result =
+		std::from_chars(number.data(), number.data() + number.size(), v);
+	if (result.ec != std::errc{} || result.ptr != number.data() + number.size() ||
+		!std::isfinite(v)) {
 		return false;
 	}
 	out = v;
@@ -58,8 +68,9 @@ int header_index(const std::vector<std::string>& header, std::string_view name) 
 } // namespace
 
 Result<void> deserialize_cag_series(std::string_view body, CagSeries& out) {
+	CagSeries parsed{};
 	glz::generic root{};
-	const glz::error_ctx ec = glz::read_json(root, std::string(body));
+	const glz::error_ctx ec = glz::read<detail::kReadOpts>(root, body);
 	if (ec || !root.is_object()) {
 		return std::unexpected(Error::parse("CAG: invalid JSON"));
 	}
@@ -67,9 +78,9 @@ Result<void> deserialize_cag_series(std::string_view body, CagSeries& out) {
 
 	glz::generic::object_t::const_iterator dit = o.find("description");
 	if (dit != o.end() && dit->second.is_object()) {
-		out.title = detail::get_string(dit->second, "title");
-		out.units = detail::get_string(dit->second, "units");
-		out.base_period = detail::get_string(dit->second, "base_period");
+		parsed.title = detail::get_string(dit->second, "title");
+		parsed.units = detail::get_string(dit->second, "units");
+		parsed.base_period = detail::get_string(dit->second, "base_period");
 	}
 
 	glz::generic::object_t::const_iterator data = o.find("data");
@@ -85,7 +96,7 @@ Result<void> deserialize_cag_series(std::string_view body, CagSeries& out) {
 		} else if (kv.second.is_number()) {
 			// Legacy form: bare numeric.
 			v = kv.second.get<double>();
-			ok = true;
+			ok = std::isfinite(v);
 		} else if (kv.second.is_object()) {
 			// Current NCEI CAG form (observed 2026-05-19): each year's
 			// value is an object with a "departure" key, e.g.
@@ -101,21 +112,23 @@ Result<void> deserialize_cag_series(std::string_view body, CagSeries& out) {
 					ok = parse_value(dep->second.get<std::string>(), v);
 				} else if (dep->second.is_number()) {
 					v = dep->second.get<double>();
-					ok = true;
+					ok = std::isfinite(v);
 				}
 			}
 		}
 		if (ok) {
-			out.data.push_back(ClimatePoint{kv.first, v});
+			parsed.data.push_back(ClimatePoint{kv.first, v});
 		}
 	}
-	if (out.data.empty()) {
+	if (parsed.data.empty()) {
 		return std::unexpected(Error::parse("CAG: empty data series"));
 	}
+	out = std::move(parsed);
 	return {};
 }
 
 Result<void> deserialize_gistemp_csv(std::string_view body, GistempSeries& out) {
+	GistempSeries parsed{};
 	const DelimitedParser parser(DelimitedParser::Delimiter::Comma);
 	const std::vector<std::vector<std::string>> rows = parser.parse(body);
 
@@ -136,7 +149,7 @@ Result<void> deserialize_gistemp_csv(std::string_view body, GistempSeries& out) 
 			}
 			continue;
 		}
-		if (static_cast<int>(row.size()) <= jd_col) {
+		if (row.size() <= static_cast<std::size_t>(std::max(year_col, jd_col))) {
 			continue;
 		}
 		const std::string yr = trim(row[static_cast<std::size_t>(year_col)]);
@@ -145,17 +158,19 @@ Result<void> deserialize_gistemp_csv(std::string_view body, GistempSeries& out) 
 		}
 		double v = 0.0;
 		if (parse_value(row[static_cast<std::size_t>(jd_col)], v)) {
-			out.annual.push_back(ClimatePoint{yr, v});
+			parsed.annual.push_back(ClimatePoint{yr, v});
 		}
 	}
-	if (out.annual.empty()) {
+	if (parsed.annual.empty()) {
 		return std::unexpected(Error::parse("GISTEMP: no annual J-D values"));
 	}
+	out = std::move(parsed);
 	return {};
 }
 
 Result<void> deserialize_nsidc_sea_ice_csv(std::string_view body, bool monthly, SeaIceSeries& out) {
-	out.monthly = monthly;
+	SeaIceSeries parsed{};
+	parsed.monthly = monthly;
 	const DelimitedParser parser(DelimitedParser::Delimiter::Comma);
 	const std::vector<std::vector<std::string>> rows = parser.parse(body);
 	if (rows.empty()) {
@@ -173,7 +188,7 @@ Result<void> deserialize_nsidc_sea_ice_csv(std::string_view body, bool monthly, 
 
 	for (std::size_t r = 1; r < rows.size(); ++r) {
 		const std::vector<std::string>& row = rows[r];
-		if (static_cast<int>(row.size()) <= ext) {
+		if (row.size() <= static_cast<std::size_t>(std::max(yi, ext))) {
 			continue;
 		}
 		double extent = 0.0;
@@ -201,11 +216,12 @@ Result<void> deserialize_nsidc_sea_ice_csv(std::string_view body, bool monthly, 
 				period += "-" + d;
 			}
 		}
-		out.extent.push_back(ClimatePoint{period, extent});
+		parsed.extent.push_back(ClimatePoint{period, extent});
 	}
-	if (out.extent.empty()) {
+	if (parsed.extent.empty()) {
 		return std::unexpected(Error::parse("NSIDC: no usable extent rows"));
 	}
+	out = std::move(parsed);
 	return {};
 }
 

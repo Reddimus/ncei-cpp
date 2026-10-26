@@ -24,10 +24,12 @@ struct glz::meta<ncei::LocationCategory> {
 namespace ncei {
 
 Result<void> deserialize_location_category(std::string_view body, LocationCategory& out) {
-	glz::error_ctx ec = glz::read<detail::kReadOpts>(out, body);
+	LocationCategory parsed{};
+	glz::error_ctx ec = glz::read<detail::kReadOpts>(parsed, body);
 	if (ec) {
 		return std::unexpected(Error::parse(glz::format_error(ec, body)));
 	}
+	out = std::move(parsed);
 	return {};
 }
 

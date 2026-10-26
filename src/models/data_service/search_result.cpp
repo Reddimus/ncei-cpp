@@ -33,18 +33,22 @@ struct glz::meta<ncei::DatasetSearchResult> {
 namespace ncei {
 
 Result<void> deserialize_data_search_result(std::string_view body, DataSearchResult& out) {
-	glz::error_ctx ec = glz::read<detail::kReadOpts>(out, body);
+	DataSearchResult parsed{};
+	glz::error_ctx ec = glz::read<detail::kReadOpts>(parsed, body);
 	if (ec) {
 		return std::unexpected(Error::parse(glz::format_error(ec, body)));
 	}
+	out = std::move(parsed);
 	return {};
 }
 
 Result<void> deserialize_dataset_search_result(std::string_view body, DatasetSearchResult& out) {
-	glz::error_ctx ec = glz::read<detail::kReadOpts>(out, body);
+	DatasetSearchResult parsed{};
+	glz::error_ctx ec = glz::read<detail::kReadOpts>(parsed, body);
 	if (ec) {
 		return std::unexpected(Error::parse(glz::format_error(ec, body)));
 	}
+	out = std::move(parsed);
 	return {};
 }
 

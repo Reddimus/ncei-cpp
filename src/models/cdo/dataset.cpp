@@ -33,10 +33,12 @@ struct glz::meta<ncei::Dataset> {
 namespace ncei {
 
 Result<void> deserialize_dataset(std::string_view body, Dataset& out) {
-	glz::error_ctx ec = glz::read<detail::kReadOpts>(out, body);
+	Dataset parsed{};
+	glz::error_ctx ec = glz::read<detail::kReadOpts>(parsed, body);
 	if (ec) {
 		return std::unexpected(Error::parse(glz::format_error(ec, body)));
 	}
+	out = std::move(parsed);
 	return {};
 }
 

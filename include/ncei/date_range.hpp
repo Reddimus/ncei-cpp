@@ -14,6 +14,8 @@ struct DateParts {
 	std::int32_t day{0};
 };
 
+/// Date helpers throw std::invalid_argument for invalid dates/ranges.
+/// add_days throws std::out_of_range outside years 1..9999.
 [[nodiscard]] DateParts parse_date(const std::string& iso_date);
 [[nodiscard]] std::string format_date(const DateParts& parts);
 [[nodiscard]] std::int32_t days_between(const std::string& start, const std::string& end);

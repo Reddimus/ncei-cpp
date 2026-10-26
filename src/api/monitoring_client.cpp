@@ -4,6 +4,7 @@
 #include "ncei/monitoring_client.hpp"
 
 #include <format>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -28,14 +29,23 @@ MonitoringClient::MonitoringClient(MonitoringClient&&) noexcept = default;
 MonitoringClient& MonitoringClient::operator=(MonitoringClient&&) noexcept = default;
 
 HttpClient& MonitoringClient::http_client() {
+	if (!impl_) {
+		throw std::logic_error("Moved-from client");
+	}
 	return impl_->http;
 }
 
 const HttpClient& MonitoringClient::http_client() const {
+	if (!impl_) {
+		throw std::logic_error("Moved-from client");
+	}
 	return impl_->http;
 }
 
 Result<HttpResponse> MonitoringClient::fetch(const std::string& url) {
+	if (!impl_) {
+		return std::unexpected(Error::network("Client not initialized"));
+	}
 	Result<HttpResponse> r =
 		with_retry([&]() -> Result<HttpResponse> { return impl_->http.get(url); }, impl_->retry);
 	if (!r) {
@@ -48,6 +58,9 @@ Result<HttpResponse> MonitoringClient::fetch(const std::string& url) {
 }
 
 Result<CagSeries> MonitoringClient::get_cag_global_annual(int start_year, int end_year) {
+	if (start_year < 1 || end_year > 9999 || start_year > end_year) {
+		return std::unexpected(Error::invalid_request("Invalid year range"));
+	}
 	const std::string url =
 		std::format("https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/global/"
 					"time-series/globe/land_ocean/12/1/{}-{}/data.json",
@@ -79,6 +92,9 @@ Result<GistempSeries> MonitoringClient::get_gistemp_global() {
 }
 
 Result<SeaIceSeries> MonitoringClient::get_nsidc_arctic_extent(bool monthly, int month) {
+	if (monthly && (month < 1 || month > 12)) {
+		return std::unexpected(Error::invalid_request("Invalid month"));
+	}
 	std::string url;
 	if (monthly) {
 		url = std::format("https://noaadata.apps.nsidc.org/NOAA/G02135/north/monthly/"

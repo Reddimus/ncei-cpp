@@ -22,7 +22,7 @@ TEST(CDOResponseTest, HasMoreTrue) {
 
 TEST(CDOResponseTest, HasMoreFalse) {
 	CDOResponse<int> resp;
-	resp.metadata.offset = 75;
+	resp.metadata.offset = 76;
 	resp.metadata.limit = 25;
 	resp.metadata.count = 100;
 	EXPECT_FALSE(resp.has_more());

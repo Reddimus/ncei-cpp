@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.20)
-project(ncei-cpp VERSION 0.3.1 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.31)
+project(ncei-cpp VERSION 0.4.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,16 +10,11 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 # Options
-option(NCEI_BUILD_TESTS "Build tests" ON)
-option(NCEI_BUILD_EXAMPLES "Build examples" ON)
-option(NCEI_ENABLE_LTO "Enable Link Time Optimization" ON)
+option(NCEI_BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
+option(NCEI_BUILD_EXAMPLES "Build examples" ${PROJECT_IS_TOP_LEVEL})
+option(NCEI_ENABLE_LTO "Enable Link Time Optimization" ${PROJECT_IS_TOP_LEVEL})
 option(NCEI_NATIVE_ARCH "Use -march=native for CPU-specific tuning" OFF)
 option(NCEI_ENABLE_NETCDF "Enable NetCDF format support" OFF)
-
-# Aggressive optimization flags for Release builds
-if(NOT MSVC)
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-endif()
 
 # Enable LTO if requested and supported
 if(NCEI_ENABLE_LTO)
@@ -33,21 +28,9 @@ if(NCEI_ENABLE_LTO)
     endif()
 endif()
 
-# CPU-specific tuning. GCC/Clang only — MSVC has different /arch
-# semantics so we leave its defaults untouched.
-if(NOT MSVC)
-    if(NCEI_NATIVE_ARCH)
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
-        message(STATUS "Using -march=native for CPU-specific optimizations")
-    else()
-        include(CheckCXXCompilerFlag)
-        check_cxx_compiler_flag("-march=x86-64-v3" COMPILER_SUPPORTS_X86_64_V3)
-        if(COMPILER_SUPPORTS_X86_64_V3)
-            set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=x86-64-v3")
-        else()
-            set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -mtune=generic")
-        endif()
-    endif()
+# Native tuning is opt-in; preserve parent release flags.
+if(NCEI_NATIVE_ARCH AND NOT MSVC)
+    add_compile_options($<$<CONFIG:Release>:-march=native>)
 endif()
 
 # Sanitizer support
@@ -67,7 +50,7 @@ if(NCEI_ENABLE_COVERAGE)
 endif()
 
 # Find dependencies
-find_package(CURL REQUIRED)
+find_package(CURL 7.85 REQUIRED)
 
 include(FetchContent)
 
@@ -77,8 +60,9 @@ include(FetchContent)
 FetchContent_Declare(
     glaze
     GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-    GIT_TAG v7.6.0
+    GIT_TAG v9.0.0
     GIT_SHALLOW TRUE
+    EXCLUDE_FROM_ALL
 )
 FetchContent_MakeAvailable(glaze)
 
@@ -92,9 +76,11 @@ if(NCEI_BUILD_TESTS)
     FetchContent_Declare(
         googletest
         GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG v1.15.2
+        GIT_TAG v1.18.0
         GIT_SHALLOW TRUE
+        EXCLUDE_FROM_ALL
     )
+    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(googletest)
     enable_testing()

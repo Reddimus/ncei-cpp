@@ -1,11 +1,12 @@
 # NCEI C++ SDK - Root Makefile
 # Wraps CMake for convenient day-to-day workflow
 
-BUILD_DIR := build
+BUILD_DIR ?= build
+BUILD_TYPE ?= Release
+CMAKE_ARGS ?=
 CPP_AUTO_AUDIT := python3 tools/cpp_auto_audit.py
 CMAKE := cmake
 NPROC := $(shell nproc 2>/dev/null || echo 4)
-BENCH_ITERATIONS := 254
 
 .PHONY: all build debug test lint clean configure help bench format pre-commit install-hooks coverage \
 	run-basic_cdo_usage run-historical_temperature run-multi_year_data run-format_comparison run-data_service_search
@@ -16,20 +17,15 @@ all: build
 # Configure CMake (if needed)
 configure:
 	@mkdir -p $(BUILD_DIR)
-	@cd $(BUILD_DIR) && $(CMAKE) .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-
-# Configure debug build
-configure-debug:
-	@mkdir -p $(BUILD_DIR)
-	@cd $(BUILD_DIR) && $(CMAKE) .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+	@cd $(BUILD_DIR) && $(CMAKE) .. -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(CMAKE_ARGS)
 
 # Build all targets
 build: configure
 	@$(CMAKE) --build $(BUILD_DIR) -j$(NPROC)
 
 # Debug build
-debug: configure-debug
-	@$(CMAKE) --build $(BUILD_DIR) -j$(NPROC)
+debug:
+	@$(MAKE) build BUILD_DIR=build-debug BUILD_TYPE=Debug
 
 # Run tests
 test: build
@@ -76,42 +72,43 @@ coverage:
 # PR" loop. Idempotent — `format` re-running is a no-op.
 pre-commit: format lint
 
-# install-hooks: drop a .git/hooks/pre-commit shim that runs `make pre-commit`
-# on every `git commit`. One-shot operator setup; idempotent.
+# Install a lint-only hook while preserving custom hooks.
 install-hooks:
-	@mkdir -p .git/hooks
-	@if [ -f .git/hooks/pre-commit ] && grep -q 'make pre-commit' .git/hooks/pre-commit 2>/dev/null; then \
-		echo "pre-commit hook already installed"; \
-	else \
-		printf '#!/bin/sh\nexec make pre-commit\n' > .git/hooks/pre-commit; \
-		chmod +x .git/hooks/pre-commit; \
-		echo "Installed .git/hooks/pre-commit -> make pre-commit"; \
-	fi
+	@hook="$$(git rev-parse --git-path hooks)/pre-commit"; \
+	if [ -f "$$hook" ]; then \
+        case "$$(cat "$$hook")" in \
+            "$$(printf '#!/bin/sh\nexec make lint')"|"$$(printf '#!/bin/sh\nexec make pre-commit')") ;; \
+            *) echo "$$hook already exists; not replacing it"; exit 1 ;; \
+        esac; \
+    fi; \
+	mkdir -p "$$(dirname "$$hook")" && printf '#!/bin/sh\nexec make lint\n' > "$$hook" && \
+	chmod +x "$$hook" && echo "Installed $$hook (runs make lint)"
+
 
 # Clean build artifacts
 clean:
-	@rm -rf $(BUILD_DIR) build-coverage
+	@rm -rf $(BUILD_DIR) build-debug build-coverage
 	@echo "Cleaned build directory"
 
 # Run benchmark
 bench: build
-	@./tools/bench.sh $(BENCH_ITERATIONS)
+	@BUILD_DIR="$(BUILD_DIR)" bash ./tools/bench.sh
 
 # Run examples (load .env for NCEI_CDO_TOKEN)
 run-basic_cdo_usage: build
-	@if [ -f .env ]; then set -a && . ./.env && set +a; fi && ./$(BUILD_DIR)/examples/example_basic_cdo
+	@if [ -f .env ]; then set -a && . ./.env && set +a; fi && ./$(BUILD_DIR)/examples/basic_cdo_usage
 
 run-historical_temperature: build
-	@if [ -f .env ]; then set -a && . ./.env && set +a; fi && ./$(BUILD_DIR)/examples/example_historical_temperature
+	@if [ -f .env ]; then set -a && . ./.env && set +a; fi && ./$(BUILD_DIR)/examples/historical_temperature
 
 run-multi_year_data: build
-	@if [ -f .env ]; then set -a && . ./.env && set +a; fi && ./$(BUILD_DIR)/examples/example_multi_year_data
+	@if [ -f .env ]; then set -a && . ./.env && set +a; fi && ./$(BUILD_DIR)/examples/multi_year_data
 
 run-format_comparison: build
-	@if [ -f .env ]; then set -a && . ./.env && set +a; fi && ./$(BUILD_DIR)/examples/example_format_comparison
+	@if [ -f .env ]; then set -a && . ./.env && set +a; fi && ./$(BUILD_DIR)/examples/format_comparison
 
 run-data_service_search: build
-	@if [ -f .env ]; then set -a && . ./.env && set +a; fi && ./$(BUILD_DIR)/examples/example_data_service_search
+	@if [ -f .env ]; then set -a && . ./.env && set +a; fi && ./$(BUILD_DIR)/examples/data_service_search
 
 # Help
 help:
@@ -121,7 +118,7 @@ help:
 	@echo "  make build           - Configure and build the SDK (Release)"
 	@echo "  make debug           - Configure and build the SDK (Debug)"
 	@echo "  make test            - Run tests"
-	@echo "  make bench           - Run benchmark ($(BENCH_ITERATIONS) iterations)"
+	@echo "  make bench           - Run benchmark (offline parsing)"
 	@echo "  make lint            - Check code formatting"
 	@echo "  make format          - Format code in place"
 	@echo "  make coverage        - Generate code coverage report (requires lcov)"
@@ -136,4 +133,7 @@ help:
 	@echo "  make run-data_service_search   - Run data service search example"
 	@echo ""
 	@echo "Variables:"
-	@echo "  BENCH_ITERATIONS=N  - Override benchmark iterations (default: 254)"
+
+
+consumers:
+	@bash tools/test_consumers.sh $(CMAKE_ARGS)

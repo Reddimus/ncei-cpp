@@ -6,6 +6,26 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-25
+
+### Fixed
+
+- Include the final record in one-based CDO pagination; bound offset arithmetic.
+- Stop non-progressing pagination and charge every retry against rate/daily quotas.
+- Validate complete bounded JSON and replace reused model outputs.
+- Correct quoted CSV endings, climate numeric parsing, and metadata dataTypes/scaling.
+- Encode opaque query values and path IDs; validate dates and chunk ranges.
+- Roll back failed cache insertions and disable zero-capacity/TTL caches.
+- Bound HTTP bodies and protocols; contain callback allocation failures.
+- Normalize token settings and retry delays without arithmetic overflow.
+- Preserve parent build flags and custom hooks; run benchmarks offline.
+
+### Changed
+
+- Require CMake 3.31 and thread-safe libcurl 7.85+; update Glaze to 9.0.0.
+- Default tests, examples, and LTO to OFF for embedded builds.
+- Add installed/FetchContent consumers and portable loopback HTTP regressions.
+
 ## [0.3.1] - 2026-05-19
 
 ### Fixed
@@ -112,7 +132,7 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   family).
 - `release.yml` auto-creates a GitHub Release on `vX.Y.Z` tag push,
   with body sourced from this CHANGELOG via `--notes-file` so inline
-  ` `code` ` spans survive
+  inline code spans survive
   ([`6831030`](https://github.com/Reddimus/ncei-cpp/commit/6831030),
   [`91f53ca`](https://github.com/Reddimus/ncei-cpp/commit/91f53ca)).
 - Tag/CMakeLists `VERSION` drift is caught at release time
@@ -175,7 +195,9 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   location_categories, locations, stations, data) + Data Service
   (data, metadata)
 
-[Unreleased]: https://github.com/Reddimus/ncei-cpp/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Reddimus/ncei-cpp/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Reddimus/ncei-cpp/compare/v0.3.1...v0.4.0
+[0.3.1]: https://github.com/Reddimus/ncei-cpp/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Reddimus/ncei-cpp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Reddimus/ncei-cpp/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Reddimus/ncei-cpp/compare/v0.1.0...v0.1.1

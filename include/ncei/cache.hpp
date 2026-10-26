@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <functional>
 #include <list>
@@ -32,7 +33,8 @@ public:
 
 		CacheEntry& entry = it->second;
 		std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-		if (now - entry.inserted_at > config_.ttl) {
+		if (std::chrono::duration<long double>(now - entry.inserted_at) >
+			std::chrono::duration<long double>(config_.ttl)) {
 			// Expired: remove from LRU list and map
 			order_.erase(entry.list_it);
 			map_.erase(it);
@@ -46,6 +48,9 @@ public:
 
 	/// Insert or update a value in the cache
 	void put(const Key& key, Value value) {
+		if (config_.max_entries == 0 || config_.ttl <= std::chrono::seconds::zero()) {
+			return;
+		}
 		std::lock_guard lock(mutex_);
 		auto it = map_.find(key);
 		if (it != map_.end()) {
@@ -56,20 +61,19 @@ public:
 			return;
 		}
 
-		// Evict if at capacity
-		while (map_.size() >= config_.max_entries && !order_.empty()) {
-			Key& lru_key = order_.back();
-			map_.erase(lru_key);
+		// Roll back the list entry if allocating or copying the map entry fails.
+		order_.push_front(key);
+		try {
+			map_.emplace(key, CacheEntry{std::move(value), std::chrono::steady_clock::now(),
+										 order_.begin()});
+		} catch (...) {
+			order_.pop_front();
+			throw;
+		}
+		while (map_.size() > config_.max_entries) {
+			map_.erase(order_.back());
 			order_.pop_back();
 		}
-
-		// Insert new entry
-		order_.push_front(key);
-		CacheEntry entry;
-		entry.value = std::move(value);
-		entry.inserted_at = std::chrono::steady_clock::now();
-		entry.list_it = order_.begin();
-		map_.emplace(key, std::move(entry));
 	}
 
 	/// Remove a specific key from the cache
@@ -116,7 +120,12 @@ struct CoordinateKey {
 	double latitude{0.0};
 	double longitude{0.0};
 
-	[[nodiscard]] bool operator==(const CoordinateKey&) const = default;
+	[[nodiscard]] bool operator==(const CoordinateKey& other) const noexcept {
+		return (latitude == other.latitude ||
+				(std::isnan(latitude) && std::isnan(other.latitude))) &&
+			   (longitude == other.longitude ||
+				(std::isnan(longitude) && std::isnan(other.longitude)));
+	}
 };
 
 } // namespace ncei
@@ -125,8 +134,8 @@ struct CoordinateKey {
 template <>
 struct std::hash<ncei::CoordinateKey> {
 	std::size_t operator()(const ncei::CoordinateKey& k) const noexcept {
-		std::size_t h1 = std::hash<double>{}(k.latitude);
-		std::size_t h2 = std::hash<double>{}(k.longitude);
+		std::size_t h1 = std::hash<double>{}(std::isnan(k.latitude) ? 0.0 : k.latitude);
+		std::size_t h2 = std::hash<double>{}(std::isnan(k.longitude) ? 0.0 : k.longitude);
 		return h1 ^ (h2 << 1);
 	}
 };

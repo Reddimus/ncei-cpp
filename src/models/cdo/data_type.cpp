@@ -25,10 +25,12 @@ struct glz::meta<ncei::DataType> {
 namespace ncei {
 
 Result<void> deserialize_data_type(std::string_view body, DataType& out) {
-	glz::error_ctx ec = glz::read<detail::kReadOpts>(out, body);
+	DataType parsed{};
+	glz::error_ctx ec = glz::read<detail::kReadOpts>(parsed, body);
 	if (ec) {
 		return std::unexpected(Error::parse(glz::format_error(ec, body)));
 	}
+	out = std::move(parsed);
 	return {};
 }
 

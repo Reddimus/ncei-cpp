@@ -1,7 +1,9 @@
 #pragma once
 #include "ncei/error.hpp"
 
+#include <algorithm>
 #include <cstdint>
+#include <limits>
 #include <string_view>
 #include <vector>
 
@@ -19,10 +21,14 @@ struct CDOResponse {
 	std::vector<T> results;
 
 	[[nodiscard]] bool has_more() const noexcept {
-		return metadata.offset + metadata.limit < metadata.count;
+		const std::int64_t next =
+			static_cast<std::int64_t>(std::max(metadata.offset, 1)) + metadata.limit;
+		return metadata.offset >= 0 && metadata.limit > 0 && next <= metadata.count;
 	}
 	[[nodiscard]] std::int32_t next_offset() const noexcept {
-		return metadata.offset + metadata.limit;
+		return static_cast<std::int32_t>(std::clamp<std::int64_t>(
+			static_cast<std::int64_t>(std::max(metadata.offset, 1)) + std::max(metadata.limit, 0),
+			1, std::numeric_limits<std::int32_t>::max()));
 	}
 };
 

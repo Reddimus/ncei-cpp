@@ -56,6 +56,7 @@ public:
 	[[nodiscard]] Result<std::string> get_data_raw(const DataRequestParams& params);
 	[[nodiscard]] Result<DatasetMetadata> get_dataset_metadata(const std::string& dataset_id);
 
+	/// Transport access throws std::logic_error on a moved-from client.
 	[[nodiscard]] HttpClient& http_client();
 	[[nodiscard]] const HttpClient& http_client() const;
 
