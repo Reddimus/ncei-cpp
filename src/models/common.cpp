@@ -46,37 +46,6 @@ double get_double(const glz::generic& obj, const char* key, double def) {
 	return it->second.get<double>();
 }
 
-std::int32_t get_int(const glz::generic& obj, const char* key, std::int32_t def) {
-	if (!obj.is_object()) {
-		return def;
-	}
-	const glz::generic::object_t& o = obj.get_object();
-	glz::generic::object_t::const_iterator it = o.find(key);
-	if (it == o.end() || !it->second.is_number()) {
-		return def;
-	}
-	return static_cast<std::int32_t>(it->second.get<double>());
-}
-
-void populate_result_set_metadata(const glz::generic& root, ResultSetMetadata& m) {
-	if (!root.is_object()) {
-		return;
-	}
-	const glz::generic::object_t& outer = root.get_object();
-	glz::generic::object_t::const_iterator meta_it = outer.find("metadata");
-	if (meta_it == outer.end() || !meta_it->second.is_object()) {
-		return;
-	}
-	const glz::generic::object_t& meta = meta_it->second.get_object();
-	glz::generic::object_t::const_iterator rs_it = meta.find("resultset");
-	if (rs_it == meta.end() || !rs_it->second.is_object()) {
-		return;
-	}
-	m.offset = get_int(rs_it->second, "offset", 0);
-	m.count = get_int(rs_it->second, "count", 0);
-	m.limit = get_int(rs_it->second, "limit", 25);
-}
-
 } // namespace detail
 
 } // namespace ncei

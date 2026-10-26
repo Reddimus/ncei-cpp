@@ -25,10 +25,12 @@ struct glz::meta<ncei::DataRecord> {
 namespace ncei {
 
 Result<void> deserialize_data_record(std::string_view body, DataRecord& out) {
-	glz::error_ctx ec = glz::read<detail::kReadOpts>(out, body);
+	DataRecord parsed{};
+	glz::error_ctx ec = glz::read<detail::kReadOpts>(parsed, body);
 	if (ec) {
 		return std::unexpected(Error::parse(glz::format_error(ec, body)));
 	}
+	out = std::move(parsed);
 	return {};
 }
 

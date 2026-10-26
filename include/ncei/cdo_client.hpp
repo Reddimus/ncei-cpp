@@ -99,6 +99,7 @@ public:
 	[[nodiscard]] Result<CDOResponse<DataRecord>> get_data(const GetDataParams& params);
 	[[nodiscard]] Result<std::vector<DataRecord>> get_data_all(const GetDataParams& params);
 
+	/// Transport access throws std::logic_error on a moved-from client.
 	[[nodiscard]] HttpClient& http_client();
 	[[nodiscard]] const HttpClient& http_client() const;
 	[[nodiscard]] std::int32_t daily_requests_remaining() const noexcept;

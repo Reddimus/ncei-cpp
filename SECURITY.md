@@ -12,7 +12,7 @@ contact path for reporting one.
 
 Security fixes are made on the latest published `vX.Y.Z` tag. Older
 tags are not back-patched — bump your `FetchContent_Declare(... GIT_TAG ...)`
-pin or your `find_package(ncei-cpp X.Y.Z REQUIRED)` constraint to the
+pin or your `find_package(ncei X.Y.Z REQUIRED)` constraint to the
 latest minor on the same major as part of the upgrade.
 
 | Version    | Supported          |

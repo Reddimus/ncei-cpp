@@ -3,6 +3,7 @@
 #include "ncei/error.hpp"
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -24,11 +25,13 @@ struct HttpResponse {
 /// HTTP client configuration
 struct ClientConfig {
 	std::string base_url;
-	std::string user_agent{"ncei-cpp/0.1.0"};
+	std::string user_agent{"ncei-cpp/0.4.0"};
 	std::string accept{"application/json"};
 	std::chrono::seconds timeout{30};
 	bool verify_ssl{true};
 	std::vector<std::pair<std::string, std::string>> extra_headers;
+	/// Maximum decompressed body size; 0 disables the limit.
+	std::size_t max_response_bytes{64 * 1024 * 1024};
 };
 
 /// HTTP client for NCEI APIs

@@ -8,6 +8,8 @@
 #include <string>
 #include <utility>
 
+#include "../json.hpp"
+
 namespace ncei {
 
 namespace {
@@ -93,7 +95,7 @@ Error Error::from_response(int status, const std::string& body, const std::strin
 
 	// Try to parse error JSON in CDO, Data Service, or RFC 7807 format.
 	glz::generic root{};
-	glz::error_ctx ec = glz::read_json(root, body);
+	glz::error_ctx ec = glz::read<detail::kReadOpts>(root, body);
 	if (!ec) {
 		populate_message_from_generic(root, err);
 	} else {

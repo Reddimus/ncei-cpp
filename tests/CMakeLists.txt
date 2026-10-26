@@ -1,5 +1,7 @@
 add_executable(ncei_tests
     test_error.cpp
+    test_regressions.cpp
+    test_http.cpp
     test_rate_limit.cpp
     test_retry.cpp
     test_cache.cpp
@@ -56,5 +58,14 @@ target_include_directories(ncei_parse_benchmark PRIVATE ${glaze_SOURCE_DIR}/incl
 if(NOT MSVC)
     target_compile_options(ncei_parse_benchmark PRIVATE -Wall -Wextra -Wpedantic)
 endif()
-add_test(NAME ncei_parse_benchmark COMMAND ncei_parse_benchmark)
+if(NCEI_ENABLE_SANITIZERS OR NCEI_ENABLE_COVERAGE)
+    add_test(NAME ncei_parse_benchmark COMMAND ncei_parse_benchmark --no-timing)
+else()
+    add_test(NAME ncei_parse_benchmark COMMAND ncei_parse_benchmark $<$<CONFIG:Debug>:--no-timing>)
+endif()
 set_tests_properties(ncei_parse_benchmark PROPERTIES TIMEOUT 30)
+
+if(WIN32)
+    target_link_libraries(ncei_tests PRIVATE ws2_32)
+    target_compile_definitions(ncei_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+endif()

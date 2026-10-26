@@ -26,10 +26,12 @@ struct glz::meta<ncei::CDOStation> {
 namespace ncei {
 
 Result<void> deserialize_station(std::string_view body, CDOStation& out) {
-	glz::error_ctx ec = glz::read<detail::kReadOpts>(out, body);
+	CDOStation parsed{};
+	glz::error_ctx ec = glz::read<detail::kReadOpts>(parsed, body);
 	if (ec) {
 		return std::unexpected(Error::parse(glz::format_error(ec, body)));
 	}
+	out = std::move(parsed);
 	return {};
 }
 

@@ -14,7 +14,6 @@ add_library(ncei_core STATIC
 target_compile_features(ncei_core PUBLIC cxx_std_23)
 target_include_directories(ncei_core PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<BUILD_INTERFACE:${glaze_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
@@ -46,7 +45,6 @@ add_library(ncei_models STATIC
 target_link_libraries(ncei_models PUBLIC ncei_core)
 target_include_directories(ncei_models PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<BUILD_INTERFACE:${glaze_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
@@ -74,3 +72,11 @@ target_include_directories(ncei_data PUBLIC
 # Main SDK library (combines all)
 add_library(ncei INTERFACE)
 target_link_libraries(ncei INTERFACE ncei_core ncei_http ncei_models ncei_cdo ncei_data)
+
+add_library(ncei::ncei ALIAS ncei)
+target_include_directories(ncei_core SYSTEM PRIVATE ${glaze_SOURCE_DIR}/include)
+target_include_directories(ncei_models SYSTEM PRIVATE ${glaze_SOURCE_DIR}/include)
+
+if(WIN32)
+    target_compile_definitions(ncei_http PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+endif()

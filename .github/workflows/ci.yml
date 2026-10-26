@@ -35,6 +35,9 @@ jobs:
       - name: Test
         run: make test
 
+      - name: Consumer builds
+        run: make consumers
+
       - name: Lint
         run: make lint
 
@@ -59,6 +62,9 @@ jobs:
 
       - name: Test
         run: make test
+
+      - name: Consumer builds
+        run: make consumers
 
       - name: Lint
         run: make lint

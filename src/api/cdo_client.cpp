@@ -4,7 +4,10 @@
 
 #include <format>
 #include <iterator>
+#include <stdexcept>
 #include <utility>
+
+#include "../url.hpp"
 
 namespace ncei {
 
@@ -31,28 +34,38 @@ CDOClient::CDOClient(CDOClient&&) noexcept = default;
 CDOClient& CDOClient::operator=(CDOClient&&) noexcept = default;
 
 HttpClient& CDOClient::http_client() {
+	if (!impl_) {
+		throw std::logic_error("Moved-from client");
+	}
 	return impl_->http;
 }
 
 const HttpClient& CDOClient::http_client() const {
+	if (!impl_) {
+		throw std::logic_error("Moved-from client");
+	}
 	return impl_->http;
 }
 
 std::int32_t CDOClient::daily_requests_remaining() const noexcept {
-	return impl_->rate_limiter.daily_requests_remaining();
+	return impl_ ? impl_->rate_limiter.daily_requests_remaining() : 0;
 }
 
 Result<HttpResponse> CDOClient::do_get(std::string_view path) {
-	if (impl_->rate_limiter.daily_requests_remaining() <= 0) {
-		return std::unexpected(Error::quota_exceeded("CDO daily request quota exceeded"));
+	if (!impl_) {
+		return std::unexpected(Error::network("Client not initialized"));
 	}
-
-	if (!impl_->rate_limiter.acquire()) {
-		return std::unexpected(Error::rate_limited("Rate limit acquisition timed out"));
-	}
-
-	return with_retry([&]() -> Result<HttpResponse> { return impl_->http.get(path); },
-					  impl_->retry);
+	return with_retry(
+		[&]() -> Result<HttpResponse> {
+			if (impl_->rate_limiter.daily_requests_remaining() <= 0) {
+				return std::unexpected(Error::quota_exceeded("CDO daily request quota exceeded"));
+			}
+			if (!impl_->rate_limiter.acquire()) {
+				return std::unexpected(Error::rate_limited("Rate limit acquisition timed out"));
+			}
+			return impl_->http.get(path);
+		},
+		impl_->retry);
 }
 
 std::string CDOClient::build_list_query(std::string_view base, const CDOListParams& params) {
@@ -62,7 +75,7 @@ std::string CDOClient::build_list_query(std::string_view base, const CDOListPara
 	char sep = '?';
 
 	auto append = [&](std::string_view key, const auto& value) {
-		std::format_to(out, "{}{}={}", sep, key, value);
+		std::format_to(out, "{}{}={}", sep, key, detail::encode(std::format("{}", value)));
 		sep = '&';
 	};
 
@@ -95,29 +108,30 @@ std::string CDOClient::build_list_query(std::string_view base, const CDOListPara
 }
 
 std::string CDOClient::build_data_query(const GetDataParams& params) {
-	std::string url = std::format("/data?datasetid={}&startdate={}&enddate={}", params.dataset_id,
-								  params.start_date, params.end_date);
+	std::string url =
+		std::format("/data?datasetid={}&startdate={}&enddate={}", detail::encode(params.dataset_id),
+					detail::encode(params.start_date), detail::encode(params.end_date));
 	std::back_insert_iterator<std::string> out(url);
 
 	if (params.data_type_ids) {
 		for (const std::string& dt : *params.data_type_ids) {
-			std::format_to(out, "&datatypeid={}", dt);
+			std::format_to(out, "&datatypeid={}", detail::encode(dt));
 		}
 	}
 	if (params.location_id)
-		std::format_to(out, "&locationid={}", *params.location_id);
+		std::format_to(out, "&locationid={}", detail::encode(*params.location_id));
 	if (params.station_id)
-		std::format_to(out, "&stationid={}", *params.station_id);
+		std::format_to(out, "&stationid={}", detail::encode(*params.station_id));
 	if (params.sort_field)
-		std::format_to(out, "&sortfield={}", *params.sort_field);
+		std::format_to(out, "&sortfield={}", detail::encode(*params.sort_field));
 	if (params.sort_order)
-		std::format_to(out, "&sortorder={}", *params.sort_order);
+		std::format_to(out, "&sortorder={}", detail::encode(*params.sort_order));
 	if (params.limit)
 		std::format_to(out, "&limit={}", *params.limit);
 	if (params.offset)
 		std::format_to(out, "&offset={}", *params.offset);
 	if (params.units)
-		std::format_to(out, "&units={}", *params.units);
+		std::format_to(out, "&units={}", detail::encode(*params.units));
 	if (params.include_metadata) {
 		std::format_to(out, "&includemetadata={}", *params.include_metadata ? "true" : "false");
 	}
@@ -190,7 +204,7 @@ Result<CDOResponse<Dataset>> CDOClient::get_datasets(const CDOListParams& params
 }
 
 Result<Dataset> CDOClient::get_dataset(const std::string& id) {
-	std::string path = "/datasets/" + id;
+	std::string path = "/datasets/" + detail::encode(id);
 	Result<HttpResponse> response = do_get(path);
 	if (!response) {
 		return std::unexpected(response.error());
@@ -216,7 +230,7 @@ Result<CDOResponse<DataCategory>> CDOClient::get_data_categories(const CDOListPa
 }
 
 Result<DataCategory> CDOClient::get_data_category(const std::string& id) {
-	std::string path = "/datacategories/" + id;
+	std::string path = "/datacategories/" + detail::encode(id);
 	Result<HttpResponse> response = do_get(path);
 	if (!response) {
 		return std::unexpected(response.error());
@@ -242,7 +256,7 @@ Result<CDOResponse<DataType>> CDOClient::get_data_types(const CDOListParams& par
 }
 
 Result<DataType> CDOClient::get_data_type(const std::string& id) {
-	std::string path = "/datatypes/" + id;
+	std::string path = "/datatypes/" + detail::encode(id);
 	Result<HttpResponse> response = do_get(path);
 	if (!response) {
 		return std::unexpected(response.error());
@@ -269,7 +283,7 @@ CDOClient::get_location_categories(const CDOListParams& params) {
 }
 
 Result<LocationCategory> CDOClient::get_location_category(const std::string& id) {
-	std::string path = "/locationcategories/" + id;
+	std::string path = "/locationcategories/" + detail::encode(id);
 	Result<HttpResponse> response = do_get(path);
 	if (!response) {
 		return std::unexpected(response.error());
@@ -295,7 +309,7 @@ Result<CDOResponse<Location>> CDOClient::get_locations(const CDOListParams& para
 }
 
 Result<Location> CDOClient::get_location(const std::string& id) {
-	std::string path = "/locations/" + id;
+	std::string path = "/locations/" + detail::encode(id);
 	Result<HttpResponse> response = do_get(path);
 	if (!response) {
 		return std::unexpected(response.error());
@@ -321,7 +335,7 @@ Result<CDOResponse<CDOStation>> CDOClient::get_stations(const CDOListParams& par
 }
 
 Result<CDOStation> CDOClient::get_station(const std::string& id) {
-	std::string path = "/stations/" + id;
+	std::string path = "/stations/" + detail::encode(id);
 	Result<HttpResponse> response = do_get(path);
 	if (!response) {
 		return std::unexpected(response.error());
@@ -348,10 +362,17 @@ Result<CDOResponse<DataRecord>> CDOClient::get_data(const GetDataParams& params)
 
 Result<std::vector<DataRecord>> CDOClient::get_data_all(const GetDataParams& params) {
 	std::vector<DataRecord> all_records;
-	std::vector<DateRange> ranges = split_date_range(params.start_date, params.end_date);
+	std::vector<DateRange> ranges;
+	try {
+		ranges = split_date_range(params.start_date, params.end_date);
+	} catch (const std::invalid_argument& error) {
+		return std::unexpected(Error::invalid_request(error.what()));
+	} catch (const std::out_of_range& error) {
+		return std::unexpected(Error::invalid_request(error.what()));
+	}
 
 	for (const DateRange& range : ranges) {
-		std::int32_t current_offset = 0;
+		std::int32_t current_offset = 1;
 		bool has_more = true;
 
 		while (has_more) {
@@ -368,11 +389,15 @@ Result<std::vector<DataRecord>> CDOClient::get_data_all(const GetDataParams& par
 				return std::unexpected(result.error());
 			}
 
+			if (result->has_more() && result->next_offset() <= current_offset) {
+				return std::unexpected(Error::parse("CDO pagination did not advance"));
+			}
 			for (DataRecord& record : result->results) {
 				all_records.push_back(std::move(record));
 			}
 
-			has_more = result->has_more();
+			has_more = result->has_more() && !result->results.empty() &&
+					   result->next_offset() > current_offset;
 			if (has_more) {
 				current_offset = result->next_offset();
 			}

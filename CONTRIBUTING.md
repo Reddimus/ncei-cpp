@@ -1,106 +1,34 @@
-# Contributing to ncei-cpp
+# Contributing
 
-Thanks for your interest in contributing. This guide covers the local
-build flow, code style expectations, and PR conventions used in this
-repo. For security-vulnerability reports, see [SECURITY.md](SECURITY.md)
-— do **not** open a public issue for those.
+Clone the repository, install CMake 3.31+, a C++23 compiler, libcurl 7.85+
+with thread-safe initialization, Python 3, and clang-format. Glaze and
+GoogleTest are fetched by CMake. See README for compiler versions.
 
-## Getting started
-
-```bash
-git clone https://github.com/Reddimus/ncei-cpp.git
-cd ncei-cpp
-
-# One-time: install build deps (Ubuntu 24.04 example)
-sudo apt install -y build-essential cmake clang-format \
-    libssl-dev libcurl4-openssl-dev
-
-make build      # CMake configure + Release build
-make test       # Run unit tests (ctest)
+```sh
+make build
+make test
+make lint
+make consumers
 ```
 
-macOS uses Homebrew (`brew install openssl curl`),
-Windows uses vcpkg (the CI workflow has the exact invocations).
+Use `make debug` for a separate Debug build. For sanitizers, configure with
+`-DNCEI_ENABLE_SANITIZERS=ON`; Debug alone does not enable them.
+`make format` updates formatting. `make install-hooks` installs a lint-only
+hook and preserves custom hooks.
 
-## Development workflow
+Use C++23, tabs, 100 columns, and explicit local types. Iterators,
+structured bindings, and lambda closures may use auto. Use the shared JSON
+read options and add regression coverage for behavioral changes. Expected
+request/parse errors use Result; date utilities validate and throw. Ordinary
+allocation failures may throw.
 
-```bash
-make debug          # Debug build with symbols + sanitizers
-make test           # Run unit tests (ctest)
-make lint           # clang-format --dry-run + cpp_auto_audit
-make format         # Apply clang-format in place
-make coverage       # lcov coverage report (Debug build)
-make clean          # Remove build/
-```
+Keep comments and docs concise. Describe the observable change and tests in
+PRs. Update CHANGELOG.md for user-visible changes. All CI checks must pass
+before merge. Security reports follow SECURITY.md.
 
-Always run `make lint` before pushing — the CI gates on both
-`clang-format --dry-run` AND the `cpp_auto_audit.py` script that
-rejects bare `auto` for local variable declarations (see Code style
-below).
+For releases, merge the version and changelog update through a PR. Tag the
+verified main commit with a signed vX.Y.Z tag and push it; the release
+workflow publishes matching changelog notes. Use a minor version for API or
+build-requirement changes and a patch version for compatible fixes.
 
-## Code style
-
-- **C++23** features encouraged: `std::expected<T, Error>` for all
-  error-returning operations, no exceptions in the public API.
-- **No `auto`** for local variable declarations. Spell out the type so
-  reviewers can verify intent without IDE help. Carve-outs:
-  - Structured bindings: `auto& [k, v] = ...`
-  - Lambda closures: `auto callback = ...`
-  - Iterator-like results: `auto it = container.find(...)`
-- **Formatting**: `.clang-format` (LLVM base, tabs, 100-col limit).
-  `make format` applies it.
-- **Includes**: project headers first, then system headers
-  (enforced by clang-format `SortIncludes`).
-- **JSON**: Glaze v7.6.0 via FetchContent. Add new model types as
-  `glz::meta<T>` specializations in the per-model `.cpp` files, then
-  expose them through `deserialize_*` wrappers in
-  `include/ncei/models/common.hpp`. Use `ncei::detail::kReadOpts`
-  (defined in `src/models/common_glaze_detail.hpp`) to inherit the
-  CDO-friendly defaults (`error_on_unknown_keys = false`,
-  `skip_null_members_on_read = true`). For dynamic-key payloads
-  (DataPoint's user-driven attribute columns), use `glz::generic`
-  and tag the call site with a `// TODO(glaze):` marker.
-
-## PR conventions
-
-- Branch names: `feat/...`, `fix/...`, `docs/...`, `chore/...`,
-  `test/...`, `build/...`, `ci/...`, `refactor/...`.
-- Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/):
-  `<type>(<scope>): <summary>` — e.g.
-  `fix(ws): null-guard moved-from accessors`.
-- Squash + delete branch on merge. PR titles become the squash commit
-  subject — write them clearly.
-- Update `CHANGELOG.md` under `## [Unreleased]` for any user-visible
-  change (new API, fix that consumers will notice, dep bump). Use the
-  Keep-a-Changelog sub-headers: Added / Changed / Fixed / Removed.
-- CI must pass on all platforms (Ubuntu 24.04 + macOS + Windows) before
-  merge.
-
-## Release process
-
-Releases are cut from `main` via tag push:
-
-```bash
-# 1. Update CMakeLists.txt VERSION and CHANGELOG.md [Unreleased] → [vX.Y.Z]
-# 2. Commit the version bump
-git commit -am "chore(release): cut vX.Y.Z"
-git push origin main
-
-# 3. Tag and push the tag — release.yml auto-creates the GitHub Release
-git tag vX.Y.Z
-git push origin vX.Y.Z
-```
-
-Semver: bump MINOR for new public API, PATCH for fixes/docs/CI.
-
-## Reporting issues
-
-- **Bugs / feature requests**: open a GitHub issue with reproduction
-  steps + the ncei-cpp version (`ncei`).
-- **Security vulnerabilities**: see [SECURITY.md](SECURITY.md) for the
-  private reporting channel.
-
-## License
-
-By contributing, you agree your changes are licensed under the MIT
-license that covers this repository.
+Contributions are licensed under MIT.

@@ -8,6 +8,8 @@
 #include "ncei/models/common.hpp"
 
 #include <algorithm>
+#include <charconv>
+#include <cmath>
 #include <exception>
 #include <glaze/glaze.hpp>
 #include <glaze/json/generic.hpp>
@@ -152,21 +154,39 @@ std::optional<double> DataPoint::get_double(std::string_view key) const {
 		return std::nullopt;
 	}
 	try {
-		return std::stod(*val);
+		double number = 0;
+		std::string_view text = *val;
+		const std::size_t begin = text.find_first_not_of(" \t\r\n");
+		if (begin == std::string_view::npos) {
+			return std::nullopt;
+		}
+		text = text.substr(begin, text.find_last_not_of(" \t\r\n") - begin + 1);
+		if (text.starts_with('+')) {
+			text.remove_prefix(1);
+		}
+		const std::from_chars_result parsed =
+			std::from_chars(text.data(), text.data() + text.size(), number);
+		if (parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size() ||
+			!std::isfinite(number)) {
+			return std::nullopt;
+		}
+		return number;
 	} catch (const std::exception&) {
 		return std::nullopt;
 	}
 }
 
 Result<void> deserialize_data_point_collection(std::string_view body, DataPointCollection& out) {
-	out.columns.clear();
-	out.records.clear();
-
 	glz::generic root{};
-	glz::error_ctx ec = glz::read_json(root, body);
+	glz::error_ctx ec = glz::read<detail::kReadOpts>(root, body);
 	if (ec) {
 		return std::unexpected(Error::parse(glz::format_error(ec, body)));
 	}
+
+	if (!root.is_array() && !root.is_object()) {
+		return std::unexpected(Error::parse("Expected a JSON object or array"));
+	}
+	out = {};
 
 	if (root.is_array()) {
 		const glz::generic::array_t& arr = root.get_array();

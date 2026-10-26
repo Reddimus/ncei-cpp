@@ -1,48 +1,24 @@
-# ncei-cpp Development Guide
+# Development
 
-## Build & Test
+Run make build, make test, make lint, and make consumers. make debug uses
+build-debug; sanitizers require -DNCEI_ENABLE_SANITIZERS=ON. make bench is
+offline. python3 tools/test_install_hooks.py verifies custom-hook preservation.
 
-```bash
-make build          # Release build (CMake + make)
-make debug          # Debug build
-make test           # Run unit tests (ctest)
-make lint           # Check formatting (clang-format --dry-run)
-make format         # Format in place
-make coverage       # lcov coverage report
-make clean          # Remove build/
-```
+C++23, namespace ncei, tabs, 100 columns. Use explicit local types except
+iterators, structured bindings, and lambda closures.
 
-## Architecture
+Layers: core, HTTP, models, CDO/Data Service clients, ncei::ncei umbrella.
+Glaze 9 is private. Use src/json.hpp for complete bounded JSON; null scalar
+fields retain defaults. Successful reads replace previous model outputs.
 
-- **Layered static libraries**: ncei_core -> ncei_http -> ncei_models -> ncei_cdo/ncei_data -> ncei (INTERFACE)
-- **C++23**: `std::expected<T, Error>` for all returns, no exceptions
-- **Two clients**: CDOClient (token auth, rate limited, paginated) + DataServiceClient (no auth, multi-format)
-- **Patterns**: Pimpl (HttpClient, CDOClient, DataServiceClient), non-copyable/movable, `[[nodiscard]]`
-- **JSON**: [Glaze](https://github.com/stephenberry/glaze) v7.6.0 via FetchContent (compile-time reflection, ~9-15x parse speedup over nlohmann on the CDO list-response shape — migrated 2026-05-11). Public entry points are the `deserialize_*(std::string_view, T&) -> Result<void>` family in `include/ncei/models/common.hpp`; per-T `glz::meta` specializations live in each model `.cpp`. The `skip_null_members_on_read = true` opt is wired through `ncei::detail::kReadOpts` so CDO's frequent `"datacoverage": null` rows leave the field at its default. Dynamic-key payloads (DataPoint's user-driven TMAX/TMIN/PRCP columns) use `glz::generic` — search for `TODO(glaze):` markers. See `tests/parse_benchmark.cpp` for the regression guard.
-- **Tests**: GoogleTest via FetchContent. Fixture files in `tests/fixtures/`.
+CDO uses a token header, one-based pagination, five requests/second and
+10,000/day per token. Every retry consumes both budgets. UTC daily counters
+cover this limiter only. Data Service needs no token. Encode opaque URL
+components with src/url.hpp; keep CSV separators outside encoded items.
 
-## Conventions
+Clients need external synchronization; caches and token buckets are thread-safe.
+Date helpers validate input and may throw; get_data_all converts invalid dates
+to Result errors. Raw PDF/NetCDF download does not imply decoding support.
 
-- Code style: `.clang-format` (LLVM base, tabs, 100 cols)
-- Namespace: `ncei`
-- **No `auto`**: Use explicit types. `auto` is only acceptable for iterators, structured bindings (`auto& [key, val]`), and range-for loops (`const auto& x : container`).
-- Model structs are declared in `include/ncei/models/...`, with `glz::meta` specializations and the `deserialize_*` implementations in matching `src/models/.../*.cpp` files. The pre-migration `from_json(const nlohmann::json&, T&)` overloads have been removed; downstream consumers use the high-level client methods (`CDOClient::get_*`, `DataServiceClient::get_*`), never these helpers directly.
-- Include order: project headers first, then system headers (enforced by clang-format).
-
-## CDO API Notes
-
-- Token via `CDOClient::Config::token`, sent as `token` HTTP header
-- Rate limit: 5 req/sec (token bucket) + 10,000/day (daily counter)
-- Pagination: offset-based, max 1000 per page
-- Date range limit: 1 year for daily/hourly, 10 years for monthly/annual
-- `get_data_all()` handles both auto-pagination and date-splitting
-
-## Data Service API Notes
-
-- No authentication required
-- Default format: CSV (most reliable), also JSON, SSV
-- `+` in timezone offsets must be URL-encoded as `%2B`
-
-## CI
-
-GitHub Actions workflow `.github/workflows/ci.yml`: build + test + lint on Ubuntu 24.04, build + test + lint on macos-latest, build + test on windows-latest (no clang-format step — Windows toolchain lacks a uniform clang-format), markdown-lint via DavidAnson. Release workflow auto-creates a GitHub Release on `vX.Y.Z` tag push (notes extracted from `CHANGELOG.md`).
+See README for dependency/compiler floors. CI builds/tests Linux, macOS,
+and Windows. Merge passing PRs before signed version tags trigger releases.

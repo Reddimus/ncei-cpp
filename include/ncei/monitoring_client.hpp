@@ -49,6 +49,7 @@ public:
 	/// that annual "minimum Arctic sea-ice" contracts settle on).
 	[[nodiscard]] Result<SeaIceSeries> get_nsidc_arctic_extent(bool monthly = true, int month = 9);
 
+	/// Transport access throws std::logic_error on a moved-from client.
 	[[nodiscard]] HttpClient& http_client();
 	[[nodiscard]] const HttpClient& http_client() const;
 

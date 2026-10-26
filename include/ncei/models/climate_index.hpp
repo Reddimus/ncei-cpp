@@ -2,16 +2,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
-/// @file climate_index.hpp
-/// @brief Authoritative settlement series for national-climate contracts.
-///
-/// Polymarket national-climate markets settle on:
-///  - "hottest year rank" / global-temperature-anomaly  -> NCEI Climate
-///    at a Glance (NOAAGlobalTemp) JSON + NASA GISTEMP CSV (cross-check).
-///  - "minimum Arctic sea-ice extent"  -> NSIDC Sea Ice Index v4 CSV.
-///
-/// These are thin JSON/CSV shapes — pure `deserialize_*` parsers here;
-/// the fetch convenience lives in `ncei/monitoring_client.hpp`.
+/// NCEI, NASA GISTEMP, and NSIDC monitoring series and parsers.
 
 #include "ncei/error.hpp"
 
